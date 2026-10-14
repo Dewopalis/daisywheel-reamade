@@ -585,7 +585,11 @@ int main(int argc,char **argv){
             window.adjustSize();
         }
 #ifdef DAISYWHEEL_KDE
-        if(kde){QRect geometry=kde->overlayGeometry();geometry.setSize(window.size());kde->setOverlayGeometry(geometry);}
+        if(kde){
+            QRect geometry=kde->overlayGeometry();geometry.setSize(window.size());
+            kde->setOverlayGeometry(geometry);
+            settings.setValue("kdeOverlayGeometry",kde->overlayGeometry());
+        }
 #endif
     };
     QObject::connect(minimalMode,&QCheckBox::toggled,[&](bool enabled){
