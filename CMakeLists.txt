@@ -19,8 +19,10 @@ if(UNIX AND NOT APPLE)
   target_compile_options(daisywheel PRIVATE -include wayland-client-protocol.h)
 endif()
 install(TARGETS daisywheel RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES README.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
+install(FILES README.md LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/daisywheel-reamade)
 if(UNIX AND NOT APPLE)
+  install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/daisywheel-reamade
+          RENAME copyright)
   install(FILES packaging/org.daisywheel.keyboard.desktop
           DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
   install(FILES packaging/daisywheel-reamade.svg

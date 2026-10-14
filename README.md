@@ -12,6 +12,18 @@ The goal is a keyboard for Windows handhelds such as the ROG Ally and Linux syst
 
 **Current status: Linux/KDE Wayland and Windows prototypes.** Controller typing into another application has been confirmed on both development PCs. The `windows-integration` branch adds system input, a focus-preserving overlay, automatic/manual opening and opt-in startup. Windows sign-in startup, broader application compatibility, handheld hardware and Steam Deck Gaming Mode still need validation. There are no packaged releases yet.
 
+## Open source and contributing
+
+Daisywheel REAmade is developed in the open. The project license and its terms
+are in [LICENSE](LICENSE) ([GPL-3.0-only](https://spdx.org/licenses/GPL-3.0-only.html)).
+In plain language, people may use, change and redistribute the project, including
+commercially. If they distribute a modified version covered by this license,
+they must keep it under GPL-3.0 and provide its corresponding source under the
+license terms. Private changes do not need to be published. The full license
+text controls. Contributions are welcome; see
+[CONTRIBUTING.md](CONTRIBUTING.md) for how to build, report issues and propose
+changes. You can also use the GitHub issue and pull request templates.
+
 ## Download builds
 
 The [Build packages workflow](.github/workflows/packages.yml) prepares Windows
