@@ -10,7 +10,7 @@ The goal is a keyboard for Windows handhelds such as the ROG Ally and Linux syst
 
 *Controller typing into KWrite on KDE Plasma / Wayland.*
 
-**Current status: Linux/KDE Wayland and Windows prototypes.** Controller typing into another application has been confirmed on both development PCs. The `windows-integration` branch adds system input, a focus-preserving overlay, automatic/manual opening and opt-in startup. Windows sign-in startup, broader application compatibility, handheld hardware and Steam Deck Gaming Mode still need validation. There are no packaged releases yet.
+**Current status: Linux/KDE Wayland and Windows prototypes.** Controller typing into another application has been confirmed on both development PCs. Windows sign-in startup, broader application compatibility, handheld hardware and Steam Deck Gaming Mode still need validation. The package pipeline builds downloads automatically; builds become stable releases only after they have been reviewed and published.
 
 ## Open source and contributing
 
@@ -26,10 +26,27 @@ changes. You can also use the GitHub issue and pull request templates.
 
 ## Download builds
 
-The [Build packages workflow](.github/workflows/packages.yml) prepares Windows
-setup EXE/portable ZIP, Debian DEB, Fedora RPM and Linux AppImage downloads.
-Until a tested release is published, get development artifacts from the repository's
-Actions page. Version tags produce draft releases for review.
+The [Build packages workflow](https://github.com/Dewopalis/daisywheel-reamade/actions/workflows/packages.yml)
+prepares a Windows setup EXE and portable ZIP, a Debian DEB, a Fedora RPM, and a
+Linux AppImage.
+
+To download a recent development build, sign in to GitHub, open the workflow
+link above, select a successful **Build packages** run, then download the bundle
+you need under **Artifacts** at the bottom of the run summary:
+
+- `windows-x64`: setup `.exe` and portable `.zip`
+- `linux-debian-appimage`: `.deb` and `.AppImage`
+- `linux-fedora-rpm`: `.rpm`
+
+Extract the downloaded artifact ZIP to get the installer or package file inside.
+Artifacts are tied to that workflow run and expire after 14 days. They are useful
+for trying recent changes; they have not necessarily been manually validated on
+handheld hardware.
+
+For reviewed, persistent downloads, visit [GitHub Releases](https://github.com/Dewopalis/daisywheel-reamade/releases).
+Version tags build all packages and prepare a draft release. The maintainers
+test the downloads and publish the release before it becomes the recommended
+download for users.
 
 See [installation and release packaging](docs/releases/packaging.md) for supported
 platform baselines, installing downloads and creating a release. The source-build

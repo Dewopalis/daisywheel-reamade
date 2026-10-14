@@ -9,6 +9,13 @@ the release job uses GitHub's scoped automatic token.
 The project is licensed under GPL-3.0-only. Native packages include the license
 text with their documentation; the RPM metadata declares the SPDX license ID.
 
+For a recent build, open the [Build packages workflow](https://github.com/Dewopalis/daisywheel-reamade/actions/workflows/packages.yml),
+choose a successful run, then download the required bundle in its **Artifacts**
+section. GitHub requires sign-in and repository read access for workflow
+artifacts. They expire after 14 days. For stable downloads, use
+[GitHub Releases](https://github.com/Dewopalis/daisywheel-reamade/releases):
+tagged builds create drafts, which maintainers test before publishing.
+
 ## Downloads produced
 
 | Download | Build environment | Runtime requirement |
