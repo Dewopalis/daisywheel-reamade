@@ -52,7 +52,6 @@ bool KdeInput::attach(QWidget *widget){
     layer->setScope("daisywheel");
     layer->setLayer(LayerShellQt::Window::LayerOverlay);
     layer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
-    layer->setActivateOnShow(false);
     layer->setExclusiveZone(0);
     layer->setAnchors(LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorBottom)|LayerShellQt::Window::AnchorRight);
     layer->setMargins(QMargins(0,0,24,24));
