@@ -197,11 +197,16 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | Opacity | 30–100%, affects panel and characters together; saved between launches |
 | Controller shortcut | Saved between launches |
 | KDE system-mode position | Bottom right of the active display; free placement not implemented |
-| Drag handle / pin toggle | Available in Windows and local test modes; disabled in KDE system mode |
+| Drag handle / pin toggle | Windows pins preserve the chosen position across hiding and restarts; local test mode locks dragging; disabled in KDE system mode |
 | Hide window | Keeps controller handling running |
 | Quit | Stops the process; controller reopening requires relaunch |
 
 KWin's `VirtualKeyboard.visible` property describes its native input panel, not this independent overlay; it is not a reliable visibility check for Daisywheel.
+
+On Windows, unpin the wheel, drag it into place, then pin it. Reopening preserves
+that position on its monitor, even when the target app is on another display.
+If the monitor disappears, placement falls back to the target display. Positions
+are kept within the available desktop area after size or display changes.
 
 ## Updating and removing on KDE
 
