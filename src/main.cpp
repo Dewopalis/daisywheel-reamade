@@ -16,9 +16,21 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QGraphicsOpacityEffect>
+#include <QSystemTrayIcon>
+#include <QMenu>
+#include <QScreen>
+#include <QCursor>
+#include <QDir>
+#include <QLockFile>
+#include <QStandardPaths>
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <SDL.h>
+#ifdef Q_OS_WIN
+#include "windowsinput.h"
+#include "windowsfocus.h"
+#endif
 #ifdef DAISYWHEEL_KDE
 #include "kdeinput.h"
 #include <QDBusInterface>
@@ -56,19 +68,23 @@ public:
         QPainter p(this); p.setRenderHint(QPainter::Antialiasing);
         p.fillRect(rect(), QColor("#111827"));
         QPointF center(width()/2.0,height()/2.0);
-        double radius=std::min(width(),height())*.33;
+        // Eight circles need diameter < 2 * radius * sin(pi / 8).
+        // Scale petals and labels together so the handheld layout stays legible.
+        double radius=std::min(width(),height())*.35;
+        double petalRadius=std::min(53.0,radius*.34);
+        double scale=petalRadius/53.0;
         const auto &layout=symbol?wheel::symbols:wheel::letters;
-        QFont font=p.font();font.setPixelSize(19);p.setFont(font);
+        QFont font=p.font();font.setPixelSize(qRound(19*scale));p.setFont(font);
         const QColor colors[]={QColor("#5ee69a"),QColor("#ff7777"),QColor("#80baff"),QColor("#ffe07a")};
-        const QPoint offsets[]={{0,23},{29,0},{-29,0},{0,-23}};
+        const QPointF offsets[]={{0,23*scale},{29*scale,0},{-29*scale,0},{0,-23*scale}};
         for(int i=0;i<8;++i){
             double a=i*wheel::pi/4;
             QPointF c=center+QPointF(std::sin(a)*radius,-std::cos(a)*radius);
             p.setPen(QPen(i==selected?QColor("#66d9ef"):QColor("#394459"),i==selected?3:1));
-            p.setBrush(QColor(i==selected?"#253c55":"#1c2636"));p.drawEllipse(c,53,53);
+            p.setBrush(QColor(i==selected?"#253c55":"#1c2636"));p.drawEllipse(c,petalRadius,petalRadius);
             for(int j=0;j<4;++j){
                 QString text=QString(QChar(layout[i][j]));if(upper&&!symbol)text=text.toUpper();
-                p.setPen(colors[j]);p.drawText(QRectF(c+offsets[j]-QPointF(14,14),QSizeF(28,28)),Qt::AlignCenter,text);
+                p.setPen(colors[j]);p.drawText(QRectF(c+offsets[j]-QPointF(14*scale,14*scale),QSizeF(28*scale,28*scale)),Qt::AlignCenter,text);
             }
         }
         p.setPen(QColor("#dce6f5"));
@@ -81,6 +97,13 @@ int main(int argc,char **argv){
     QApplication app(argc,argv);
     QCoreApplication::setOrganizationName("Daisywheel");
     QCoreApplication::setApplicationName("Daisywheel");
+    const int previewArgument=app.arguments().indexOf("--render-wheel-preview");
+    if(previewArgument>=0){
+        if(app.arguments().size()<=previewArgument+1)return 1;
+        WheelView preview;preview.setMinimumSize(0,0);preview.resize(390,310);
+        preview.selected=0;
+        return preview.grab().save(app.arguments().at(previewArgument+1))?0:1;
+    }
     QSettings settings;
     if(app.arguments().contains("--input-target-test")) {
         QPlainTextEdit target;target.setWindowTitle("Daisywheel cross-app verification");
@@ -94,14 +117,30 @@ int main(int argc,char **argv){
         QTimer::singleShot(60000,&app,[&]{std::cerr<<"FAIL: external input not received\n";app.exit(4);});
         return app.exec();
     }
-    const bool systemMode=app.arguments().contains("--kde-input-method");
+    const bool kdeMode=app.arguments().contains("--kde-input-method");
+    const bool windowsMode=app.arguments().contains("--windows-input");
+    if(kdeMode && windowsMode){std::cerr<<"Choose only one system input backend\n";return 1;}
+    const bool systemMode=kdeMode||windowsMode;
+    std::unique_ptr<QLockFile> instanceLock;
+    if(windowsMode){
+        const QString directory=QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+        if(!QDir().mkpath(directory)){std::cerr<<"Cannot create application data directory\n";return 1;}
+        instanceLock=std::make_unique<QLockFile>(directory+"/windows-input.lock");
+        if(!instanceLock->tryLock(0)){std::cerr<<"Windows keyboard is already running or its lock is unavailable\n";return 1;}
+    }
+#ifdef Q_OS_WIN
+    WindowsInput windowsInput;
+#else
+    if(windowsMode){std::cerr<<"Windows backend unavailable in this build\n";return 1;}
+#endif
 #ifdef DAISYWHEEL_KDE
     std::unique_ptr<KdeInput> kde;
-    if(systemMode)kde=std::make_unique<KdeInput>();
+    if(kdeMode)kde=std::make_unique<KdeInput>();
 #else
-    if(systemMode){std::cerr<<"KDE backend unavailable in this build\n";return 1;}
+    if(kdeMode){std::cerr<<"KDE backend unavailable in this build\n";return 1;}
 #endif
     SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS,"1");
+    SDL_SetMainReady();
     bool sdlOk=SDL_Init(SDL_INIT_GAMECONTROLLER)==0;
     if(app.arguments().contains("--controllers")) {
         if(!sdlOk){std::cerr<<SDL_GetError()<<'\n';return 1;}
@@ -115,7 +154,12 @@ int main(int argc,char **argv){
         }
         SDL_Quit();return count?0:2;
     }
-    QWidget window;window.setWindowTitle("Daisywheel — controller prototype");
+#ifdef Q_OS_WIN
+    WindowsOverlay window;window.preserveFocus=windowsMode;
+#else
+    QWidget window;
+#endif
+    window.setWindowTitle("Daisywheel — controller prototype");
     app.setQuitOnLastWindowClosed(false);
     window.setWindowFlags(Qt::Window|Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
     window.setAttribute(Qt::WA_TranslucentBackground);
@@ -148,6 +192,7 @@ int main(int argc,char **argv){
     auto *editor=new QPlainTextEdit;editor->setPlaceholderText("Tap here, then type with your controller");editor->setMaximumHeight(110);box->addWidget(editor);
     editor->setVisible(!systemMode);
     auto *view=new WheelView;box->addWidget(view);
+    if(windowsMode)view->setMinimumSize(360,310);
     TouchActivation activation;activation.activate=[=]{view->show();};
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
@@ -158,9 +203,28 @@ int main(int argc,char **argv){
     auto *hide=new QPushButton("Hide window · controller shortcut to reopen");box->addWidget(hide);
     VisibilityPolicy visibility;
     QObject::connect(hide,&QPushButton::clicked,[&]{visibility.manual(false);window.hide();});
+    auto showOverlay=[&]{
+        view->show();
+        if(windowsMode){
+            QScreen *screen=nullptr;
+#ifdef Q_OS_WIN
+            MONITORINFOEXW monitor{};monitor.cbSize=sizeof(monitor);
+            if(GetMonitorInfoW(MonitorFromWindow(GetForegroundWindow(),MONITOR_DEFAULTTONEAREST),&monitor)){
+                for(auto *candidate:QGuiApplication::screens())
+                    if(candidate->name()==QString::fromWCharArray(monitor.szDevice)){screen=candidate;break;}
+            }
+#endif
+            if(!screen)screen=QGuiApplication::screenAt(QCursor::pos());
+            if(!screen)screen=QGuiApplication::primaryScreen();
+            window.adjustSize();
+            const auto area=screen->availableGeometry();
+            window.move(area.right()-window.width()-12,area.bottom()-window.height()-12);
+        }
+        window.show();
+    };
     auto manualToggle=[&]{
         bool show=!window.isVisible();visibility.manual(show);
-        if(show){view->show();window.show();}else window.hide();
+        if(show)showOverlay();else window.hide();
 #ifdef DAISYWHEEL_KDE
         if(show && kde){
             QDBusInterface keyboard("org.kde.KWin","/VirtualKeyboard","org.kde.kwin.VirtualKeyboard");
@@ -171,12 +235,18 @@ int main(int argc,char **argv){
     auto *quit=new QPushButton("Quit");box->addWidget(quit);
     QObject::connect(quit,&QPushButton::clicked,&app,&QApplication::quit);
     auto sendText=[&](const QString &text){
+#ifdef Q_OS_WIN
+        if(windowsMode){windowsInput.commit(text);return;}
+#endif
 #ifdef DAISYWHEEL_KDE
         if(kde){if(!kde->commit(text))status->setText("No active text field — focus a text field in another app");return;}
 #endif
         editor->insertPlainText(text);
     };
     auto sendControl=[&](bool backspace){
+#ifdef Q_OS_WIN
+        if(windowsMode){windowsInput.key(backspace);return;}
+#endif
 #ifdef DAISYWHEEL_KDE
         if(kde){kde->key(backspace?0xff08:0xff0d);return;}
 #endif
@@ -197,6 +267,7 @@ int main(int argc,char **argv){
                 if(event.type==SDL_CONTROLLERDEVICEREMOVED&&controller&&event.cdevice.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))){SDL_GameControllerClose(controller);controller=nullptr;view->selected=-1;}
                 if(event.type!=SDL_CONTROLLERBUTTONDOWN||!controller||event.cbutton.which!=SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller)))continue;
                 if(event.cbutton.button==shortcut->currentData().toInt()) {
+                    if(windowsMode){manualToggle();continue;}
 #ifdef DAISYWHEEL_KDE
                     if(kde) {
                         manualToggle();
@@ -207,6 +278,7 @@ int main(int argc,char **argv){
                     else {view->show();window.show();}
                     continue;
                 }
+                if(windowsMode && event.cbutton.button==SDL_CONTROLLER_BUTTON_BACK){manualToggle();continue;}
 #ifdef DAISYWHEEL_KDE
                 if(kde && event.cbutton.button==SDL_CONTROLLER_BUTTON_BACK){manualToggle();continue;}
 #endif
@@ -237,7 +309,10 @@ int main(int argc,char **argv){
             }
         }
         if(controller)view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
-        status->setText(controller?QString("Connected: %1").arg(SDL_GameControllerName(controller)):sdlOk?"Connect a controller — this is a local typing prototype":"Controller initialization failed");view->update();
+        status->setText(controller?QString("Connected: %1").arg(SDL_GameControllerName(controller)):sdlOk?"Connect a controller":"Controller initialization failed");view->update();
+#ifdef Q_OS_WIN
+        if(windowsMode && !windowsInput.lastError().isEmpty())status->setText(windowsInput.lastError());
+#endif
 #ifdef DAISYWHEEL_KDE
         if(kde)status->setText(status->text()+(kde->active()?" · text field active":" · waiting for text field"));
         if(kde && kde->verificationTarget() && app.arguments().contains("--verify-input") && !verificationSent){
@@ -280,6 +355,59 @@ int main(int argc,char **argv){
     }
 #endif
     timer.start(16);
+#ifdef Q_OS_WIN
+    QSystemTrayIcon tray;
+    QMenu trayMenu;
+    QTimer windowsPolicyTimer;
+    std::unique_ptr<WindowsFocus> focusWatcher;
+    if(windowsMode){
+        focusWatcher=std::make_unique<WindowsFocus>();
+        windowsInput.attach(window);
+        handle->setText("Daisywheel · Windows overlay · drag here to move");
+        box->addWidget(new QLabel("Focus a text field, then use your controller shortcut to open"));
+        auto *automatic=new QCheckBox("Open automatically when a text field is selected");
+        automatic->setChecked(settings.value("windowsAutomatic",false).toBool());box->addWidget(automatic);
+        focusWatcher->setEnabled(automatic->isChecked());
+        QObject::connect(automatic,&QCheckBox::toggled,[&](bool enabled){settings.setValue("windowsAutomatic",enabled);focusWatcher->setEnabled(enabled);});
+        auto *startup=new QCheckBox("Start Daisywheel when I sign in to Windows");
+        QSettings startupSettings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",QSettings::NativeFormat);
+        startup->setChecked(startupSettings.contains("DaisywheelREAmade"));box->addWidget(startup);
+        QObject::connect(startup,&QCheckBox::toggled,[&](bool enabled){
+            QSettings run("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",QSettings::NativeFormat);
+            if(enabled)run.setValue("DaisywheelREAmade",QString("\"%1\" --windows-input").arg(QDir::toNativeSeparators(QCoreApplication::applicationFilePath())));
+            else run.remove("DaisywheelREAmade");
+            run.sync();
+            if(run.status()!=QSettings::NoError)status->setText("Could not update Windows startup setting");
+        });
+        QPixmap icon(32,32);icon.fill(Qt::transparent);
+        {QPainter painter(&icon);painter.setRenderHint(QPainter::Antialiasing);painter.setBrush(QColor("#66d9ef"));painter.setPen(Qt::NoPen);
+         for(int i=0;i<8;++i){double a=i*wheel::pi/4;painter.drawEllipse(QPointF(16+10*std::sin(a),16-10*std::cos(a)),4,4);}}
+        tray.setIcon(QIcon(icon));tray.setToolTip("Daisywheel REAmade");
+        trayMenu.addAction("Show / hide keyboard",&window,manualToggle);
+        auto *autoAction=trayMenu.addAction("Open automatically for text fields");
+        autoAction->setCheckable(true);autoAction->setChecked(automatic->isChecked());
+        QObject::connect(autoAction,&QAction::toggled,automatic,&QCheckBox::setChecked);
+        QObject::connect(automatic,&QCheckBox::toggled,autoAction,&QAction::setChecked);
+        trayMenu.addAction("Quit",&app,&QApplication::quit);
+        tray.setContextMenu(&trayMenu);
+        QObject::connect(&tray,&QSystemTrayIcon::activated,[&](QSystemTrayIcon::ActivationReason reason){if(reason==QSystemTrayIcon::Trigger)manualToggle();});
+        if(QSystemTrayIcon::isSystemTrayAvailable())tray.show();
+        QByteArray lastContext;
+        QObject::connect(&windowsPolicyTimer,&QTimer::timeout,&window,[&,automatic,lastContext]() mutable {
+            HWND foreground=GetForegroundWindow();DWORD process=0;
+            if(foreground)GetWindowThreadProcessId(foreground,&process);
+            // Tray/settings interaction must not clear dismissal or hide the panel.
+            if(process==GetCurrentProcessId())return;
+            auto focus=focusWatcher->snapshot();
+            const bool fresh=focus.foreground==foreground && GetTickCount64()-focus.sampledAt<1500;
+            if(fresh && focus.known && focus.context!=lastContext){visibility.contextEnded();lastContext=focus.context;}
+            const bool show=visibility.visible(fresh && focus.known && focus.editable,automatic->isChecked());
+            if(show && !window.isVisible())showOverlay();
+            else if(!show && window.isVisible())window.hide();
+        });
+        windowsPolicyTimer.start(200);
+    }
+#endif
     if(!systemMode)window.show();
     if(app.arguments().contains("--smoke-test"))QTimer::singleShot(1000,&app,&QApplication::quit);
     int result=app.exec();

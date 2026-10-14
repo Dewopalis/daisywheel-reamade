@@ -1,4 +1,6 @@
 /build/
+/build-windows/
+/work/
 /kwinrc.before-daisywheel
 *.user
 /build.before-rename/
