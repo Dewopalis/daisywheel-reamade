@@ -10,7 +10,7 @@ The goal is a keyboard for Windows handhelds such as the ROG Ally and Linux syst
 
 *Controller typing into KWrite on KDE Plasma / Wayland.*
 
-**Current status: Linux/KDE Wayland and Windows prototypes.** Controller typing into another application has been confirmed on both development PCs. Windows sign-in startup, broader application compatibility, handheld hardware and Steam Deck Gaming Mode still need validation. The package pipeline builds downloads automatically; builds become stable releases only after they have been reviewed and published.
+**Current status: Linux/KDE Wayland and Windows prototypes.** Controller typing into another application has been confirmed on both development PCs. The v0.1.0 Windows and Linux packages are published on GitHub Releases. Windows sign-in startup, broader application compatibility, handheld hardware and Steam Deck Gaming Mode still need validation.
 
 ## Open source and contributing
 
@@ -44,9 +44,10 @@ for trying recent changes; they have not necessarily been manually validated on
 handheld hardware.
 
 For reviewed, persistent downloads, visit [GitHub Releases](https://github.com/Dewopalis/daisywheel-reamade/releases).
-Version tags build all packages and prepare a draft release. The maintainers
-test the downloads and publish the release before it becomes the recommended
-download for users.
+The first release, [v0.1.0](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.1.0),
+is published with the Windows installer and portable ZIP, Debian DEB, Fedora
+RPM, Linux AppImage and SHA-256 checksums. Future version tags build packages
+and prepare a draft release for review before publication.
 
 See [installation and release packaging](docs/releases/packaging.md) for supported
 platform baselines, installing downloads and creating a release. The source-build
@@ -182,7 +183,7 @@ To remove startup registration, uncheck **Start Daisywheel when I sign in to Win
 
 ### Update or remove
 
-Choose **Quit** from the tray before rebuilding or replacing the executable; a running instance locks the EXE on Windows. Rebuild, then launch again with `--windows-input`. Before removing the application folder, uncheck its startup option, then quit. There is no installer or packaged release yet.
+Choose **Quit** from the tray before replacing the executable; a running instance locks the EXE on Windows. For installation from a package, use the [Windows setup installer](docs/releases/packaging.md#install-downloaded-packages). Before removing the application folder, uncheck its startup option, then quit. For updating a source build, rebuild and launch again with `--windows-input`.
 
 ### Build from source
 
@@ -281,6 +282,7 @@ Confirmed on the development PC:
 - Overlay rendering without acquiring keyboard focus; opacity control implemented.
 - Registration in KDE Virtual Keyboard settings and launch through KWin.
 - Automated checks for stick selection, character slots and automatic/manual visibility rules.
+- v0.1.0 Windows setup/portable packages, Debian DEB, Fedora RPM and Linux AppImage built by CI; package installation or startup checks passed in the release workflow.
 
 Implemented, with more live validation needed:
 
@@ -288,7 +290,7 @@ Implemented, with more live validation needed:
 - Backspace and Enter across applications and toolkits.
 - Reboot startup, controller reconnection and multiple-display behavior.
 
-Current limits include a provisional English layout, compatibility dependent on a usable application input context, and controller events potentially reaching the target app as well as the wheel. There is no prediction, repeat-on-hold, configurable deadzone or full controller remapping yet. Windows input is under development on this branch; installers and Gaming Mode support remain planned.
+Current limits include a provisional English layout, compatibility dependent on a usable application input context, and controller events potentially reaching the target app as well as the wheel. There is no prediction, repeat-on-hold, configurable deadzone or full controller remapping yet. Windows automatic-opening compatibility still needs testing across more applications; Steam Deck Gaming Mode remains a separate investigation.
 
 ## Roadmap
 
@@ -299,13 +301,14 @@ Current limits include a provisional English layout, compatibility dependent on 
 - [ ] Test browsers, editors and XWayland applications.
 - [ ] Configurable controller mappings, deadzones and repeat behavior.
 - [ ] Additional languages, layouts and controller-specific button labels.
-- [ ] Validate the Windows input backend across applications and controller hardware; text/control delivery and focus preservation are implemented on this branch.
-- [ ] Validate Windows UI Automation automatic opening in browsers and more applications; native/Qt detection, manual activation and opt-in startup are implemented on this branch.
-- [ ] Linux and Windows packages, installers and reproducible builds.
-- [ ] Testing on CachyOS handhelds, Steam Deck Desktop Mode and ROG Ally.
+- [ ] Validate the Windows input backend across more applications and controller hardware; text/control delivery and focus preservation are implemented.
+- [ ] Validate Windows UI Automation automatic opening in browsers and more applications; native/Qt detection, manual activation and opt-in startup are implemented.
+- [x] Automated Linux and Windows package builds, package checks and draft-release creation.
+- [x] Review and publish the v0.1.0 release.
+- [ ] Test the published packages on supported handheld hardware, including Steam Deck Desktop Mode and ROG Ally.
 - [ ] Investigate Steam Deck Gaming Mode separately.
 
-Windows uses its own activation and input backend on this branch. Microsoft's IME API does not provide a general independent replacement touch keyboard; see [Microsoft's IME documentation](https://learn.microsoft.com/en-gb/windows/apps/design/input/input-method-editors).
+Windows uses its own activation and input backend. Microsoft's IME API does not provide a general independent replacement touch keyboard; see [Microsoft's IME documentation](https://learn.microsoft.com/en-gb/windows/apps/design/input/input-method-editors).
 
 ## Troubleshooting
 

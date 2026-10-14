@@ -16,6 +16,12 @@ artifacts. They expire after 14 days. For stable downloads, use
 [GitHub Releases](https://github.com/Dewopalis/daisywheel-reamade/releases):
 tagged builds create drafts, which maintainers test before publishing.
 
+The first release, [v0.1.0](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.1.0),
+is published. Its workflow passed the Windows, DEB/AppImage and RPM jobs. CI
+installed the DEB and RPM packages and checked startup, verified the extracted
+AppImage, and smoke-tested the staged Windows package. Testing across more
+target devices and applications remains ongoing.
+
 ## Downloads produced
 
 | Download | Build environment | Runtime requirement |
@@ -28,24 +34,27 @@ tagged builds create drafts, which maintainers test before publishing.
 
 AppImage is the intended download for current CachyOS/Arch users. It does not
 make system-input support available on other desktops or Steam Deck Gaming Mode.
-The first hosted builds and downloaded-package tests must pass before promising
-the above compatibility to users. Windows and Linux packages are currently unsigned.
+The hosted v0.1.0 package workflow passes its CI installation and startup checks;
+manual testing on target systems is still needed before promising broader device
+or application compatibility. Windows and Linux packages are currently unsigned.
 
-## Create a release
+## Create a future release
 
 1. Merge packaging changes and check all `Build packages` jobs on `main`.
 2. Update `project(Daisywheel VERSION ...)` in `CMakeLists.txt`, commit, and merge.
-3. Tag the release commit, for example:
+3. Tag the release commit with the same version, for example:
 
    ```bash
    git switch main
    git pull --ff-only origin main
-   git tag v0.1.0
-   git push origin v0.1.0
+   git tag v0.1.1
+   git push origin v0.1.1
    ```
 
+   Replace `v0.1.1` with the release version set in `CMakeLists.txt`. The first
+   release, `v0.1.0`, is already tagged. Prerelease suffixes are not supported.
 4. Wait for Windows, DEB/AppImage and RPM jobs to succeed. The tag must match
-   the CMake version. Prerelease suffixes are not supported yet.
+   the CMake version.
 5. Open the draft under GitHub Releases. Download and test the actual installer,
    portable ZIP, native packages and AppImage; check controller typing, focus,
    activation policies and restart startup on the intended machines.
