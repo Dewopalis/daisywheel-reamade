@@ -1,3 +1,4 @@
 /build/
 /kwinrc.before-daisywheel
 *.user
+/build.before-rename/
