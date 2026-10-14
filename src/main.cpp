@@ -44,23 +44,35 @@ class MoveHandle : public QLabel {
 public:
     bool pinned=false;
     std::function<void(const QRect &)> geometryChanged;
+    std::function<void(const QRect &)> geometryCommitted;
     std::function<QRect()> geometryProvider;
-    using QLabel::QLabel;
+    explicit MoveHandle(const QString &text, QWidget *parent=nullptr):QLabel(text,parent){
+        geometryTimer.setSingleShot(true);
+        QObject::connect(&geometryTimer,&QTimer::timeout,this,[this]{
+            if(dragging && !pinned && geometryChanged)geometryChanged(pendingGeometry);
+        });
+    }
     void mousePressEvent(QMouseEvent *event) override {
         if(pinned || event->button()!=Qt::LeftButton)return;
-        origin=event->position().toPoint();initialGeometry=geometryProvider?geometryProvider():window()->geometry();dragging=true;
+        origin=event->globalPosition().toPoint();initialGeometry=geometryProvider?geometryProvider():window()->geometry();dragging=true;
         if(!geometryChanged && window()->windowHandle())window()->windowHandle()->startSystemMove();
         event->accept();
     }
     void mouseMoveEvent(QMouseEvent *event) override {
         if(!dragging || pinned){QLabel::mouseMoveEvent(event);return;}
+        if(geometryChanged){
+            pendingGeometry=initialGeometry.translated(event->globalPosition().toPoint()-origin);
+            if(!geometryTimer.isActive())geometryTimer.start(40);
+        }
         event->accept();
     }
     void mouseReleaseEvent(QMouseEvent *event) override {
         if(event->button()==Qt::LeftButton){
             if(dragging && !pinned && geometryChanged){
-                const QPoint delta=event->position().toPoint()-origin;
-                geometryChanged(initialGeometry.translated(delta));
+                geometryTimer.stop();
+                const QRect finalGeometry=initialGeometry.translated(event->globalPosition().toPoint()-origin);
+                geometryChanged(finalGeometry);
+                if(geometryCommitted)geometryCommitted(finalGeometry);
             }
             dragging=false;event->accept();return;
         }
@@ -70,6 +82,8 @@ private:
     bool dragging=false;
     QPoint origin;
     QRect initialGeometry;
+    QRect pendingGeometry;
+    QTimer geometryTimer;
 };
 
 class ResizeHandle : public QWidget {
@@ -80,14 +94,20 @@ public:
         setCursor(Qt::SizeFDiagCursor);
         setToolTip("Drag this corner to resize Daisywheel");
         setAccessibleName("Resize Daisywheel");
+        geometryTimer.setSingleShot(true);
+        QObject::connect(&geometryTimer,&QTimer::timeout,this,[this]{
+            if(resizing && this->resizeInPlace && geometryChanged)geometryChanged(pendingGeometry);
+        });
     }
     std::function<QRect()> geometryProvider;
+    std::function<void(const QRect &)> geometryCommitted;
+    QTimer geometryTimer;
     void mousePressEvent(QMouseEvent *event) override {
         if(event->button()==Qt::LeftButton){
             origin=event->globalPosition().toPoint();
-            localOrigin=event->position().toPoint();
             initialGeometry=geometryProvider?geometryProvider():window()->geometry();
             resizing=true;
+            pendingGeometry=initialGeometry;
             event->accept();
             return;
         }
@@ -95,8 +115,7 @@ public:
     }
     void mouseMoveEvent(QMouseEvent *event) override {
         if(!resizing){QWidget::mouseMoveEvent(event);return;}
-        const QPoint delta=resizeInPlace?event->position().toPoint()-localOrigin
-                                        :event->globalPosition().toPoint()-origin;
+        const QPoint delta=event->globalPosition().toPoint()-origin;
         const QSize requestedMinimum=window()->minimumSizeHint().expandedTo(window()->minimumSize());
         QScreen *screen=window()->screen();
         if(!screen)screen=QGuiApplication::primaryScreen();
@@ -107,7 +126,11 @@ public:
             const int width=qBound(minimumWidth,initialGeometry.width()-delta.x(),bounds.width());
             const int height=qBound(minimumHeight,initialGeometry.height()-delta.y(),bounds.height());
             const QRect geometry(initialGeometry.topLeft(),QSize(width,height));
-            if(geometryChanged){pendingGeometry=geometry;event->accept();return;}
+            if(geometryChanged){
+                pendingGeometry=geometry;
+                if(!geometryTimer.isActive())geometryTimer.start(40);
+                event->accept();return;
+            }
             window()->resize(width,height);
         }else{
             const int minimumWidth=qMin(requestedMinimum.width(),bounds.width());
@@ -123,8 +146,11 @@ public:
     }
     void mouseReleaseEvent(QMouseEvent *event) override {
         if(event->button()==Qt::LeftButton){
-            if(resizing && resizeInPlace && geometryChanged && !pendingGeometry.isNull())
+            if(resizing && resizeInPlace && geometryChanged && !pendingGeometry.isNull()){
+                geometryTimer.stop();
                 geometryChanged(pendingGeometry);
+                if(geometryCommitted)geometryCommitted(pendingGeometry);
+            }
             resizing=false;pendingGeometry=QRect();event->accept();return;
         }
         QWidget::mouseReleaseEvent(event);
@@ -139,7 +165,6 @@ private:
     bool resizeInPlace=false;
     bool resizing=false;
     QPoint origin;
-    QPoint localOrigin;
     QRect initialGeometry;
     QRect pendingGeometry;
 };
@@ -479,10 +504,14 @@ int main(int argc,char **argv){
         resizeHandle->geometryProvider=[&]{return kde->overlayGeometry();};
         handle->geometryChanged=[&](const QRect &geometry){
             kde->setOverlayGeometry(geometry);
-            resizeHandle->geometryChanged(geometry);
+        };
+        handle->geometryCommitted=[&](const QRect &geometry){
+            settings.setValue("kdeOverlayGeometry",geometry);
         };
         resizeHandle->geometryChanged=[&](const QRect &geometry){
             kde->setOverlayGeometry(geometry);
+        };
+        resizeHandle->geometryCommitted=[&](const QRect &geometry){
             settings.setValue("kdeOverlayGeometry",geometry);
         };
         QObject::connect(pin,&QCheckBox::toggled,[&](bool checked){handle->pinned=checked;});
