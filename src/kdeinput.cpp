@@ -135,6 +135,7 @@ void KdeInput::previewOverlayGeometry(const QRect &requested){
                                                   area.bottom()+1-y-size.height()));
     if(!impl->previewWidget->isVisible())impl->previewWidget->show();
     impl->previewWidget->raise();
+    impl->previewWidget->update();
 }
 void KdeInput::clearOverlayGeometryPreview(){
     if(impl->previewWidget)impl->previewWidget->hide();
