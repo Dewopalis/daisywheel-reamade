@@ -10,7 +10,7 @@ The goal is a keyboard for Windows handhelds such as the ROG Ally and Linux syst
 
 *Controller typing into KWrite on KDE Plasma / Wayland.*
 
-**Current status: early Linux/KDE Wayland prototype.** Controller typing into another application has been confirmed on the development PC. Windows system input and Steam Deck Gaming Mode are not implemented. There are no packaged releases yet; build from source using the instructions below.
+**Current status: Linux/KDE Wayland and Windows prototypes.** Controller typing into another application has been confirmed on both development PCs. The `windows-integration` branch adds system input, a focus-preserving overlay, automatic/manual opening and opt-in startup. Windows sign-in startup, broader application compatibility, handheld hardware and Steam Deck Gaming Mode still need validation. There are no packaged releases yet.
 
 ## Platform support
 
@@ -20,7 +20,7 @@ The goal is a keyboard for Windows handhelds such as the ROG Ally and Linux syst
 | CachyOS / Arch-based KDE distributions | Installation instructions below; more device testing needed |
 | Steam Deck Desktop Mode | Intended target; not yet tested on the device |
 | Steam Deck Gaming Mode | Separate integration planned for investigation |
-| Windows 11 | System-input backend planned; shared UI not yet validated on Windows |
+| Windows 11 | Controller typing confirmed; UI Automation field detection tested with native and Qt controls on `windows-integration` |
 | GNOME, other Wayland desktops, X11 | System-keyboard integration not supported yet |
 
 ## Install on CachyOS / Arch Linux with KDE
@@ -90,6 +90,84 @@ The installed executable is named `daisywheel-reamade`; the build output remains
 
 KWin launches the selected keyboard. **No separate Autostart entry is needed.** The selection persists across sessions, so launch after logging into Plasma is expected; a full reboot test remains outstanding. This setup does not install a keyboard for the login screen or establish lock-screen support.
 
+## Run on Windows
+
+### Launch the keyboard
+
+From the repository folder in PowerShell:
+
+```powershell
+Start-Process -FilePath '.\build-windows\daisywheel.exe' -ArgumentList '--windows-input'
+```
+
+For the current development checkout, you can also run this from any folder:
+
+```powershell
+Start-Process -FilePath 'C:\Development\daisywheel-reamade\build-windows\daisywheel.exe' -ArgumentList '--windows-input'
+```
+
+Keep the entire `build-windows` directory together: the executable needs its DLLs and plugin folders. Double-clicking the EXE without arguments opens **local test mode**, which types into its own field. For an Explorer/desktop shortcut, use this Target (adjust the path for your installation):
+
+```text
+"C:\Development\daisywheel-reamade\build-windows\daisywheel.exe" --windows-input
+```
+
+System mode initially runs in the notification area near the clock. Look under the hidden-icons arrow if needed. Press Home/Guide or Back/View, or right-click the Daisywheel tray icon and choose **Show / hide keyboard**. Focus a text field in another app and type with your controller. A chosen shortcut takes precedence over that button's typing action. Only one Windows system-mode instance can run at a time.
+
+### Open automatically when selecting a text field
+
+1. Launch Daisywheel in Windows system mode.
+2. Open the wheel and enable **Open automatically when a text field is selected**. You can also enable **Open automatically for text fields** from the tray menu.
+3. Click, tap, or tab into an editable text field in another application. The overlay appears without deliberately taking keyboard focus.
+4. Move focus to a non-text control or read-only field to hide an automatically opened overlay.
+
+The option is saved between launches. Detection uses Windows UI Automation and direct support for standard native text controls. Native text boxes, Qt text boxes/document editors and password fields have been tested. Browsers and other custom controls can work when they expose suitable accessibility information, but browser compatibility has not yet been validated. Detection checks field metadata and editability; it does not read field contents.
+
+Hiding the overlay suppresses automatic reopening for the same field. Selecting a different field or leaving and returning to text entry restores automatic opening. Opening manually keeps the overlay open until you dismiss it. Controller and tray opening remain available if automatic detection fails. The overlay opens at the bottom right of the foreground application's display, with a pointer-display fallback.
+
+Daisywheel runs as a separate app. It does not register as a replacement touch-keyboard option in Windows Settings or disable Microsoft's keyboard. If both appear, adjust the built-in touch keyboard's automatic-opening preference separately.
+
+### Start automatically when signing in
+
+1. Launch with `--windows-input` and open the wheel.
+2. Enable **Start Daisywheel when I sign in to Windows**.
+3. Enable the automatic text-field option too if you want the wheel to appear as you select text fields after sign-in.
+4. Keep the executable and its companion DLLs at the same location.
+
+This registers the current executable with `--windows-input` for **your Windows account**. Administrator rights are not required. The saved automatic-opening preference is restored on launch. Windows may delay startup slightly; this is sign-in startup, not login-screen keyboard support. A full sign-out/reboot test is still outstanding.
+
+If Windows has disabled the app, check **Settings → Apps → Startup** or **Task Manager → Startup apps** for Daisywheel/DaisywheelREAmade and enable it. See [Microsoft's startup-app instructions](https://support.microsoft.com/en-gb/windows/experience/startup-boot/configure-startup-applications-in-windows).
+
+To remove startup registration, uncheck **Start Daisywheel when I sign in to Windows**. Choosing **Quit** stops the current instance but keeps startup registration and preferences. Turning off automatic opening keeps manual opening available. If you move the app, launch it from the new location and toggle the startup checkbox off and on to update its path.
+
+### Update or remove
+
+Choose **Quit** from the tray before rebuilding or replacing the executable; a running instance locks the EXE on Windows. Rebuild, then launch again with `--windows-input`. Before removing the application folder, uncheck its startup option, then quit. There is no installer or packaged release yet.
+
+### Build from source
+
+Use a matching **Qt 6 / MinGW 64-bit** pair, CMake 3.20+, Ninja and the SDL2 MinGW 64-bit development package. The branch includes `scripts/build-windows.ps1`; it configures, builds, runs the shared wheel tests and deploys runtime DLLs alongside the executables. Its defaults use dependencies in `work/`; supply `-QtRoot`, `-CompilerRoot`, `-SDLRoot`, `-CMake` and `-Ninja` for other installations.
+
+```powershell
+& .\scripts\build-windows.ps1
+Start-Process -FilePath '.\build-windows\daisywheel.exe' -ArgumentList '--controllers' -Wait -RedirectStandardOutput '.\build-windows\controllers.txt'
+Get-Content '.\build-windows\controllers.txt'
+Start-Process -FilePath '.\build-windows\daisywheel.exe' -ArgumentList '--windows-input'
+```
+
+Characters, Space, Backspace and Enter go to the current foreground application. Release physical Shift/Ctrl/Alt/Windows keys before typing. Windows can block input to applications running at a higher privilege level. Secure desktops and login screens are unsupported.
+
+Run the interactive tests on an unlocked Windows desktop:
+
+```powershell
+.\build-windows\windows-input-tests.exe
+.\build-windows\windows-focus-tests.exe
+```
+
+The input test uses a separate native Windows text control to check Unicode including a surrogate pair, Backspace, Enter, self-process rejection and overlay focus preservation. The focus test checks native/Qt editable fields, same-window field identities, read-only fields, buttons, document editors and password fields. Both temporarily focus their own verified fixture windows, including a synthetic mouse click; they do not read user text. Reconnects, browsers, elevated applications and handheld displays require additional testing. A Qt text-field probe reordered a mixed Unicode/emoji string injected as one burst; this remains a compatibility issue before adding multi-character Unicode layouts or prediction.
+
+Validated on the Windows development PC: Release build, shared wheel/visibility tests, isolated native input and UI Automation focus tests, local/system-mode smoke tests, and detection of an accessible mapped Xbox controller. The user also confirmed controller-driven typing into another application. See [Windows development notes](docs/windows-development.md).
+
 ## Controls
 
 Characters sit at the physical south/east/west/north face-button positions. SDL supplies controller mappings; colors currently follow Xbox conventions.
@@ -104,28 +182,28 @@ Characters sit at the physical south/east/west/north face-button positions. SDL 
 | Right stick click | Backspace |
 | Start / Menu | Enter |
 | Home / Guide | Show or hide the keyboard by default |
-| Back / View | Also show or hide in KDE system mode |
+| Back / View | Also show or hide in Windows/KDE system mode |
 
 The shortcut dropdown offers Home/Guide, Back/View and Start/Menu. A chosen shortcut takes precedence over that button's typing action. Steam or desktop bindings may also respond to Guide; select another shortcut if needed. Daisywheel does not suppress those other bindings.
 
 ## Opening and appearance
 
-Automatic opening follows KDE's **Show Virtual Keyboard** policy through KWin's `willShowOnActive` API. The overlay starts hidden and picks up applied policy changes without restarting. Failed policy queries disable automatic opening.
+In KDE mode, automatic opening follows KDE's **Show Virtual Keyboard** policy through KWin's `willShowOnActive` API. The overlay starts hidden and picks up applied policy changes without restarting. Failed policy queries disable automatic opening. Windows uses its saved Daisywheel automatic-opening option described above.
 
-Controller opening works regardless of the automatic policy and keeps the overlay open until dismissed. Hiding it suppresses automatic reopening in the same input context; leaving that context restores automatic behavior. Opening without a text field shows the wheel, but no text is inserted until an input context is available.
+Controller opening works regardless of the automatic policy and keeps the overlay open until dismissed. Hiding it suppresses automatic reopening in the same input context; leaving that context restores automatic behavior. KDE only commits into an active input context. Windows sends keystrokes to the foreground application; focus a text field first.
 
 | Setting | Current behavior |
 | --- | --- |
 | Opacity | 30–100%, affects panel and characters together; saved between launches |
 | Controller shortcut | Saved between launches |
 | KDE system-mode position | Bottom right of the active display; free placement not implemented |
-| Drag handle / pin toggle | Available in local test mode; disabled in KDE system mode |
+| Drag handle / pin toggle | Available in Windows and local test modes; disabled in KDE system mode |
 | Hide window | Keeps controller handling running |
 | Quit | Stops the process; controller reopening requires relaunch |
 
 KWin's `VirtualKeyboard.visible` property describes its native input panel, not this independent overlay; it is not a reliable visibility check for Daisywheel.
 
-## Updating and removing
+## Updating and removing on KDE
 
 First select **None** in KDE Virtual Keyboard settings and apply to stop the keyboard. From the source checkout:
 
@@ -165,7 +243,7 @@ Implemented, with more live validation needed:
 - Backspace and Enter across applications and toolkits.
 - Reboot startup, controller reconnection and multiple-display behavior.
 
-Current limits include a provisional English layout, compatibility dependent on a usable application input context, and controller events potentially reaching the target app as well as the wheel. There is no prediction, repeat-on-hold, configurable deadzone or full controller remapping yet. Windows system input, installers and Gaming Mode support remain planned.
+Current limits include a provisional English layout, compatibility dependent on a usable application input context, and controller events potentially reaching the target app as well as the wheel. There is no prediction, repeat-on-hold, configurable deadzone or full controller remapping yet. Windows input is under development on this branch; installers and Gaming Mode support remain planned.
 
 ## Roadmap
 
@@ -176,13 +254,13 @@ Current limits include a provisional English layout, compatibility dependent on 
 - [ ] Test browsers, editors and XWayland applications.
 - [ ] Configurable controller mappings, deadzones and repeat behavior.
 - [ ] Additional languages, layouts and controller-specific button labels.
-- [ ] Windows 11 input backend that preserves focus and delivers text/control keys.
-- [ ] Windows automatic/manual activation and startup configuration.
+- [ ] Validate the Windows input backend across applications and controller hardware; text/control delivery and focus preservation are implemented on this branch.
+- [ ] Validate Windows UI Automation automatic opening in browsers and more applications; native/Qt detection, manual activation and opt-in startup are implemented on this branch.
 - [ ] Linux and Windows packages, installers and reproducible builds.
 - [ ] Testing on CachyOS handhelds, Steam Deck Desktop Mode and ROG Ally.
 - [ ] Investigate Steam Deck Gaming Mode separately.
 
-Windows needs its own activation and input backend. Microsoft's IME API does not provide a general independent replacement touch keyboard; see [Microsoft's IME documentation](https://learn.microsoft.com/en-gb/windows/apps/design/input/input-method-editors).
+Windows uses its own activation and input backend on this branch. Microsoft's IME API does not provide a general independent replacement touch keyboard; see [Microsoft's IME documentation](https://learn.microsoft.com/en-gb/windows/apps/design/input/input-method-editors).
 
 ## Troubleshooting
 
