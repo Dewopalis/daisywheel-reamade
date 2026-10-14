@@ -83,7 +83,11 @@ bool KdeInput::attach(QWidget *widget){
     impl->previewLayer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
     impl->previewLayer->setExclusiveZone(0);
     impl->previewLayer->setAnchors(LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorBottom)|LayerShellQt::Window::AnchorRight);
+#ifdef DAISYWHEEL_LEGACY_LAYER_SCREEN
+    impl->previewLayer->setScreenConfiguration(LayerShellQt::Window::ScreenFromCompositor);
+#else
     impl->previewLayer->setWantsToBeOnActiveScreen(true);
+#endif
     layer->setScope("daisywheel");
     layer->setLayer(LayerShellQt::Window::LayerOverlay);
     layer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
@@ -93,7 +97,9 @@ bool KdeInput::attach(QWidget *widget){
     QScreen *screen=widget->screen();if(!screen)screen=QGuiApplication::primaryScreen();
     const QRect area=screen?screen->availableGeometry():QRect(0,0,1280,720);
     impl->geometry=QRect(area.right()+1-24-widget->width(),area.bottom()+1-24-widget->height(),widget->width(),widget->height());
+#ifdef DAISYWHEEL_LAYER_SHELL_MODERN_API
     layer->setDesiredSize(widget->size());
+#endif
     layer->setMargins(QMargins(0,0,24,24));
 #ifdef DAISYWHEEL_LEGACY_LAYER_SCREEN
     layer->setScreenConfiguration(LayerShellQt::Window::ScreenFromCompositor);
@@ -115,7 +121,9 @@ void KdeInput::setOverlayGeometry(const QRect &requested){
     const int x=qBound(area.left(),requested.x(),area.right()+1-size.width());
     const int y=qBound(area.top(),requested.y(),area.bottom()+1-size.height());
     impl->geometry=QRect(x,y,size.width(),size.height());
+#ifdef DAISYWHEEL_LAYER_SHELL_MODERN_API
     impl->layer->setDesiredSize(size);
+#endif
     impl->layer->setMargins(QMargins(0,0,area.right()+1-impl->geometry.right()-1,
                                            area.bottom()+1-impl->geometry.bottom()-1));
 }
@@ -130,7 +138,9 @@ void KdeInput::previewOverlayGeometry(const QRect &requested){
     const int x=qBound(area.left(),requested.x(),area.right()+1-size.width());
     const int y=qBound(area.top(),requested.y(),area.bottom()+1-size.height());
     impl->previewWidget->resize(size);
+#ifdef DAISYWHEEL_LAYER_SHELL_MODERN_API
     impl->previewLayer->setDesiredSize(size);
+#endif
     impl->previewLayer->setMargins(QMargins(0,0,area.right()+1-x-size.width(),
                                                   area.bottom()+1-y-size.height()));
     if(!impl->previewWidget->isVisible())impl->previewWidget->show();
