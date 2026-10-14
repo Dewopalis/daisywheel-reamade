@@ -8,6 +8,7 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QToolButton>
 #include <QTimer>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -313,12 +314,20 @@ int main(int argc,char **argv){
     editor->setVisible(!systemMode);
     auto *view=new WheelView;box->addWidget(view);
     if(windowsMode)view->setMinimumSize(360,310);
+    auto *restoreControls=new QToolButton(content);
+    restoreControls->setText("≡");
+    restoreControls->setToolTip("Show full controls");
+    restoreControls->setAccessibleName("Show full controls");
+    restoreControls->setFixedSize(28,28);
+    restoreControls->setStyleSheet("QToolButton { color: #dce6f5; background: #253044; border: 1px solid #536075; border-radius: 6px; font-size: 18px; }");
+    restoreControls->hide();
+    QObject::connect(restoreControls,&QToolButton::clicked,[&]{minimalMode->setChecked(false);});
     TouchActivation activation;activation.activate=[=]{view->show();};
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
     addControl(new QLabel("Left stick: petal · Face buttons: character · LB: shift · RB: symbols\n"
                              "Left stick click: space · Right stick click: backspace · Start: enter · Back: hide\n"
-                             "Hold the selected controller shortcut to restore controls from Minimal mode"));
+                             "Tap ≡ or hold the selected controller shortcut to restore controls from Minimal mode"));
     auto *toggle=new QPushButton("Show / hide wheel");addControl(toggle);
     QObject::connect(toggle,&QPushButton::clicked,[=]{view->setVisible(!view->isVisible());});
     auto *hide=new QPushButton("Hide window · controller shortcut to reopen");addControl(hide);
@@ -558,6 +567,8 @@ int main(int argc,char **argv){
             control->setVisible(!enabled && (control!=editor || !systemMode));
         view->setMinimumSize(enabled?QSize(280,280):windowsMode?QSize(360,310):QSize(420,360));
         window.adjustSize();
+        restoreControls->setVisible(enabled);
+        if(enabled){restoreControls->move(content->width()-restoreControls->width()-5,5);restoreControls->raise();}
 #ifdef DAISYWHEEL_KDE
         if(kde){QRect geometry=kde->overlayGeometry();geometry.setSize(window.size());kde->setOverlayGeometry(geometry);}
 #endif

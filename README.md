@@ -227,7 +227,7 @@ Characters sit at the physical south/east/west/north face-button positions. SDL 
 
 The shortcut dropdown offers Home/Guide, Back/View and Start/Menu. A chosen shortcut takes precedence over that button's typing action. Steam or desktop bindings may also respond to Guide; select another shortcut if needed. Daisywheel does not suppress those other bindings.
 
-Enable **Minimal mode (wheel only)** to hide the settings and help panel and shrink the window for handheld screens. Press the selected controller shortcut to hide or show Daisywheel; while it is visible, hold that shortcut for about a second to restore the full controls.
+Enable **Minimal mode (wheel only)** to hide the settings and help panel and shrink the window for handheld screens. A small **≡** button in the upper-right restores the full controls. You can also hold the selected controller shortcut for about a second while the wheel is visible.
 
 ## Opening and appearance
 
@@ -239,7 +239,7 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | --- | --- |
 | Opacity | 30–100%, affects panel and characters together; saved between launches |
 | Controller shortcut | Saved between launches |
-| Minimal mode | Shows only the wheel at a compact size; hold the selected controller shortcut while visible to restore the controls |
+| Minimal mode | Shows the wheel at a compact size; use the upper-right **≡** button or hold the selected controller shortcut to restore the controls |
 | KDE system-mode position | Drag the header or corner and release to apply; position and size are saved between launches |
 | Drag handle / pin toggle | Drag the header to move and enable **Pin position** to lock it |
 | Hide window | Keeps controller handling running |
