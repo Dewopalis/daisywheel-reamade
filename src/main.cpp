@@ -50,20 +50,20 @@ public:
     using QLabel::QLabel;
     void mousePressEvent(QMouseEvent *event) override {
         if(pinned || event->button()!=Qt::LeftButton)return;
-        origin=event->position().toPoint();initialGeometry=geometryProvider?geometryProvider():window()->geometry();dragging=true;
+        origin=event->globalPosition().toPoint();initialGeometry=geometryProvider?geometryProvider():window()->geometry();dragging=true;
         if(!geometryChanged && window()->windowHandle())window()->windowHandle()->startSystemMove();
         event->accept();
     }
     void mouseMoveEvent(QMouseEvent *event) override {
         if(!dragging || pinned){QLabel::mouseMoveEvent(event);return;}
-        pendingGeometry=initialGeometry.translated(event->position().toPoint()-origin);
+        pendingGeometry=initialGeometry.translated(event->globalPosition().toPoint()-origin);
         if(geometryPreview)geometryPreview(pendingGeometry);
         event->accept();
     }
     void mouseReleaseEvent(QMouseEvent *event) override {
         if(event->button()==Qt::LeftButton){
             if(dragging && !pinned && geometryChanged){
-                const QRect finalGeometry=initialGeometry.translated(event->position().toPoint()-origin);
+                const QRect finalGeometry=initialGeometry.translated(event->globalPosition().toPoint()-origin);
                 geometryChanged(finalGeometry);
                 if(geometryCommitted)geometryCommitted(finalGeometry);
             }
@@ -93,7 +93,7 @@ public:
     std::function<void(const QRect &)> geometryPreview;
     void mousePressEvent(QMouseEvent *event) override {
         if(event->button()==Qt::LeftButton){
-            origin=event->position().toPoint();
+            origin=event->globalPosition().toPoint();
             initialGeometry=geometryProvider?geometryProvider():window()->geometry();
             resizing=true;
             pendingGeometry=initialGeometry;
@@ -104,7 +104,7 @@ public:
     }
     void mouseMoveEvent(QMouseEvent *event) override {
         if(!resizing){QWidget::mouseMoveEvent(event);return;}
-        const QPoint delta=event->position().toPoint()-origin;
+        const QPoint delta=event->globalPosition().toPoint()-origin;
         const QSize requestedMinimum=window()->minimumSizeHint().expandedTo(window()->minimumSize());
         QScreen *screen=window()->screen();
         if(!screen)screen=QGuiApplication::primaryScreen();

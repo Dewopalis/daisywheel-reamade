@@ -9,7 +9,6 @@
 #include <QDebug>
 #include <QPainter>
 #include <QWidget>
-#include <cmath>
 #include <cstdio>
 #include <LayerShellQt/Window>
 
@@ -26,16 +25,8 @@ public:
         const QRectF bounds=rect().adjusted(3,3,-4,-4);
         p.setPen(QPen(QColor(102,217,239,220),2,Qt::DashLine));
         p.setBrush(QColor(17,24,39,100));p.drawRoundedRect(bounds,12,12);
-        const qreal radius=qMin(width(),height())*.35;
-        const qreal petal=qMin(53.0,radius*.34);
-        p.setPen(QPen(QColor(102,217,239,175),1.5));p.setBrush(QColor(102,217,239,45));
-        const QPointF center(width()/2.0,height()/2.0);
-        for(int i=0;i<8;++i){
-            const qreal angle=i*3.14159265358979323846/4;
-            const QPointF point=center+QPointF(std::sin(angle)*radius,-std::cos(angle)*radius);
-            p.drawEllipse(point,petal,petal);
-        }
-        p.setPen(QPen(QColor(210,240,250,220),2));p.drawEllipse(center,4,4);
+        p.setPen(QColor(210,240,250,210));
+        p.drawText(rect(),Qt::AlignCenter,QStringLiteral("Daisywheel will appear here"));
     }
 };
 class Context : public QtWayland::zwp_input_method_context_v1 {
