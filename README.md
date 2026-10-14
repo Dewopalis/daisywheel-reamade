@@ -280,6 +280,7 @@ Confirmed on the development PC:
 - Controller shortcuts showing and hiding the keyboard.
 - Controller-driven typing into another application on KDE Wayland.
 - Overlay rendering without acquiring keyboard focus; opacity control implemented.
+- Saved 60–120% window-size control scales the interface and wheel together; it defaults to 75%.
 - Registration in KDE Virtual Keyboard settings and launch through KWin.
 - Automated checks for stick selection, character slots and automatic/manual visibility rules.
 - v0.1.0 Windows setup/portable packages, Debian DEB, Fedora RPM and Linux AppImage built by CI; package installation or startup checks passed in the release workflow.
@@ -295,7 +296,8 @@ Current limits include a provisional English layout, compatibility dependent on 
 ## Roadmap
 
 - [ ] Configurable pinned placement in KDE system mode, with saved anchors and offsets.
-- [ ] Adjustable size and a compact handheld layout.
+- [x] Configurable application size with proportional interface and wheel scaling.
+- [ ] Further compact-layout tuning for handheld screens.
 - [ ] Validate touch/tablet opening and all KDE opening policies on hardware.
 - [ ] Validate reboot startup, reconnects and multiple displays.
 - [ ] Test browsers, editors and XWayland applications.

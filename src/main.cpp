@@ -21,6 +21,7 @@
 #include <QMenu>
 #include <QScreen>
 #include <QCursor>
+#include <QFont>
 #include <QDir>
 #include <QLockFile>
 #include <QStandardPaths>
@@ -189,6 +190,10 @@ int main(int argc,char **argv){
     auto *alpha=new QGraphicsOpacityEffect(content);content->setGraphicsEffect(alpha);
     auto setOpacity=[&](int value){alpha->setOpacity(value/100.0);opacityLabel->setText(QString("Opacity: %1%").arg(value));settings.setValue("opacity",value);};
     setOpacity(opacity->value());QObject::connect(opacity,&QSlider::valueChanged,setOpacity);
+    auto *sizeLabel=new QLabel;box->addWidget(sizeLabel);
+    auto *sizeSlider=new QSlider(Qt::Horizontal);sizeSlider->setRange(60,120);
+    sizeSlider->setValue(qBound(60,settings.value("uiScale",75).toInt(),120));
+    sizeSlider->setToolTip("Adjust the size of the controls and keyboard wheel");box->addWidget(sizeSlider);
     box->addWidget(new QLabel("Controller shortcut (works while running in background)"));
     auto *shortcut=new QComboBox;
     shortcut->addItem("Home / Guide",SDL_CONTROLLER_BUTTON_GUIDE);
@@ -202,6 +207,25 @@ int main(int argc,char **argv){
     editor->setVisible(!systemMode);
     auto *view=new WheelView;box->addWidget(view);
     if(windowsMode)view->setMinimumSize(360,310);
+    const QFont baseFont=app.font();
+    auto applyUiScale=[&](int percent){
+        const double factor=percent/100.0;
+        QFont scaledFont=baseFont;
+        if(baseFont.pointSizeF()>0)scaledFont.setPointSizeF(baseFont.pointSizeF()*factor);
+        else if(baseFont.pixelSize()>0)scaledFont.setPixelSize(qMax(1,qRound(baseFont.pixelSize()*factor)));
+        app.setFont(scaledFont);
+        view->setMinimumSize(qRound(580*factor),qRound(500*factor));
+        if(windowsMode)view->setMinimumSize(qRound(360*factor),qRound(310*factor));
+        view->updateGeometry();
+        sizeLabel->setText(QString("Window size: %1%").arg(percent));
+        settings.setValue("uiScale",percent);
+        const QSize previousSize=window.size();
+        window.adjustSize();
+        if(windowsMode && window.isVisible() && !pin->isChecked())
+            window.move(window.pos()+QPoint(previousSize.width()-window.width(),previousSize.height()-window.height()));
+    };
+    applyUiScale(sizeSlider->value());
+    QObject::connect(sizeSlider,&QSlider::valueChanged,applyUiScale);
     TouchActivation activation;activation.activate=[=]{view->show();};
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
@@ -422,6 +446,7 @@ int main(int argc,char **argv){
         windowsPolicyTimer.start(200);
     }
 #endif
+    if(!windowsMode)window.adjustSize();
     if(!systemMode)window.show();
     if(app.arguments().contains("--smoke-test"))QTimer::singleShot(1000,&app,&QApplication::quit);
     int result=app.exec();
