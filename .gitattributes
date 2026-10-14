@@ -1,0 +1,6 @@
+*.sh text eol=lf
+packaging/AppRun text eol=lf
+*.cmake text eol=lf
+*.yml text eol=lf
+*.ps1 text eol=crlf
+*.iss text eol=crlf

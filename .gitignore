@@ -4,3 +4,7 @@
 /kwinrc.before-daisywheel
 *.user
 /build.before-rename/
+/build-ci/
+/stage-windows/
+/dist/
+__pycache__/

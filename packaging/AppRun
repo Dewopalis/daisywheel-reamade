@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+appdir=${APPDIR:-$(cd "$(dirname "$0")" && pwd)}
+if [[ ${1:-} == --install-desktop-entry ]]; then
+    [[ -n ${APPIMAGE:-} ]] || { echo 'Run this option from the AppImage file, not an extracted directory.' >&2; exit 1; }
+    exec python3 "$appdir/usr/share/daisywheel-reamade/register-appimage.py" "$APPIMAGE"
+fi
+export LD_LIBRARY_PATH="$appdir/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export QT_PLUGIN_PATH="$appdir/usr/plugins"
+export QT_QPA_PLATFORM=${QT_QPA_PLATFORM:-wayland}
+if [[ $# == 0 ]]; then set -- --kde-input-method; fi
+exec "$appdir/usr/bin/daisywheel" "$@"

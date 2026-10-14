@@ -1,0 +1,183 @@
+name: Build packages
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packages-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          version = re.search(r'project\(Daisywheel VERSION (\d+\.\d+\.\d+)', Path('CMakeLists.txt').read_text())[1]
+          if os.environ['REF_TYPE'] == 'tag':
+              tag = os.environ['REF_NAME']
+              if not re.fullmatch(r'v\d+\.\d+\.\d+', tag):
+                  raise SystemExit('Release tags must be vMAJOR.MINOR.PATCH')
+              if tag[1:] != version:
+                  raise SystemExit('Release tag must match the CMake project version')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print(f'version={version}', file=output)
+          PY
+
+  deb-appimage:
+    needs: version
+    runs-on: ubuntu-24.04
+    container: debian:13
+    timeout-minutes: 35
+    env:
+      PACKAGE_VERSION: ${{ needs.version.outputs.version }}
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Install tools and native dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates curl python3 build-essential cmake ninja-build pkg-config dpkg-dev desktop-file-utils file libwayland-dev qt6-base-dev qt6-wayland-dev qt6-wayland-dev-tools qt6-qpa-plugins qt6-wayland liblayershellqtinterface-dev layer-shell-qt libsdl2-dev libgl1 libegl1
+      - uses: actions/checkout@v4
+      - name: Build and test
+        run: |
+          cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DDAISYWHEEL_PACKAGE_VERSION="$PACKAGE_VERSION"
+          cmake --build build-ci --parallel 2
+          ctest --test-dir build-ci --output-on-failure
+          python3 tests/test_registration.py
+          QT_QPA_PLATFORM=offscreen ./build-ci/daisywheel --smoke-test
+      - name: Create and install DEB
+        run: |
+          mkdir -p dist
+          cpack --config build-ci/CPackConfig.cmake -G DEB -B dist
+          apt-get install -y ./dist/*.deb
+          desktop-file-validate /usr/share/applications/org.daisywheel.keyboard.desktop
+          QT_QPA_PLATFORM=offscreen /usr/bin/daisywheel --smoke-test
+      - name: Create AppImage
+        run: bash scripts/package-appimage.sh "$PACKAGE_VERSION" build-ci
+      - name: Verify AppImage bundled runtime
+        run: |
+          mkdir -p work/appimage-smoke
+          cd work/appimage-smoke
+          ../../dist/*.AppImage --appimage-extract > /dev/null
+          QT_QPA_PLATFORM=offscreen ./squashfs-root/AppRun --smoke-test
+          test -f squashfs-root/usr/plugins/wayland-shell-integration/liblayer-shell.so
+          test -f squashfs-root/usr/plugins/platforms/libqwayland-generic.so
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-debian-appimage
+          path: |
+            dist/*.deb
+            dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 14
+
+  rpm:
+    needs: version
+    runs-on: ubuntu-24.04
+    container: fedora:43
+    timeout-minutes: 30
+    env:
+      PACKAGE_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Install tools and native dependencies
+        run: dnf install -y git gcc gcc-c++ cmake ninja-build pkgconf-pkg-config rpm-build desktop-file-utils file findutils qt6-qtbase-devel qt6-qtwayland-devel qt6-qtbase-gui qt6-qtwayland SDL2-devel layer-shell-qt-devel wayland-devel
+      - uses: actions/checkout@v4
+      - name: Build, test and package
+        run: |
+          cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DDAISYWHEEL_PACKAGE_VERSION="$PACKAGE_VERSION"
+          cmake --build build-ci --parallel 2
+          ctest --test-dir build-ci --output-on-failure
+          mkdir -p dist
+          cpack --config build-ci/CPackConfig.cmake -G RPM -B dist
+          dnf install -y ./dist/*.rpm
+          desktop-file-validate /usr/share/applications/org.daisywheel.keyboard.desktop
+          QT_QPA_PLATFORM=offscreen /usr/bin/daisywheel --smoke-test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-fedora-rpm
+          path: dist/*.rpm
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    needs: version
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        id: msys2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-qt6-base
+            mingw-w64-ucrt-x86_64-SDL2
+      - name: Build and test
+        shell: msys2 {0}
+        run: |
+          cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-ci --parallel 2
+          ctest --test-dir build-ci --output-on-failure
+      - name: Install installer compiler
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+      - name: Deploy runtime and create installer and portable ZIP
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ needs.version.outputs.version }}
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: ./scripts/package-windows.ps1 -Version $env:PACKAGE_VERSION -ToolchainBin "$env:MSYS2_LOCATION\ucrt64\bin"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: |
+            dist/*.exe
+            dist/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  draft-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [version, deb-appimage, rpm, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums and draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cd dist
+          sha256sum *.exe *.zip *.deb *.rpm *.AppImage > SHA256SUMS.txt
+          if draft=$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' 2>/dev/null); then
+            test "$draft" = true || { echo 'Refusing to replace assets on a published release'; exit 1; }
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "Daisywheel REAmade $RELEASE_TAG" --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" ./* --clobber
