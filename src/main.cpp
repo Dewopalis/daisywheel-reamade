@@ -46,12 +46,8 @@ public:
     std::function<void(const QRect &)> geometryChanged;
     std::function<void(const QRect &)> geometryCommitted;
     std::function<QRect()> geometryProvider;
-    explicit MoveHandle(const QString &text, QWidget *parent=nullptr):QLabel(text,parent){
-        geometryTimer.setSingleShot(true);
-        QObject::connect(&geometryTimer,&QTimer::timeout,this,[this]{
-            if(dragging && !pinned && geometryChanged)geometryChanged(pendingGeometry);
-        });
-    }
+    std::function<void(const QRect &)> geometryPreview;
+    using QLabel::QLabel;
     void mousePressEvent(QMouseEvent *event) override {
         if(pinned || event->button()!=Qt::LeftButton)return;
         origin=event->globalPosition().toPoint();initialGeometry=geometryProvider?geometryProvider():window()->geometry();dragging=true;
@@ -60,20 +56,18 @@ public:
     }
     void mouseMoveEvent(QMouseEvent *event) override {
         if(!dragging || pinned){QLabel::mouseMoveEvent(event);return;}
-        if(geometryChanged){
-            pendingGeometry=initialGeometry.translated(event->globalPosition().toPoint()-origin);
-            if(!geometryTimer.isActive())geometryTimer.start(40);
-        }
+        pendingGeometry=initialGeometry.translated(event->globalPosition().toPoint()-origin);
+        if(geometryPreview)geometryPreview(pendingGeometry);
         event->accept();
     }
     void mouseReleaseEvent(QMouseEvent *event) override {
         if(event->button()==Qt::LeftButton){
             if(dragging && !pinned && geometryChanged){
-                geometryTimer.stop();
                 const QRect finalGeometry=initialGeometry.translated(event->globalPosition().toPoint()-origin);
                 geometryChanged(finalGeometry);
                 if(geometryCommitted)geometryCommitted(finalGeometry);
             }
+            if(geometryPreview)geometryPreview(QRect());
             dragging=false;event->accept();return;
         }
         QLabel::mouseReleaseEvent(event);
@@ -83,7 +77,6 @@ private:
     QPoint origin;
     QRect initialGeometry;
     QRect pendingGeometry;
-    QTimer geometryTimer;
 };
 
 class ResizeHandle : public QWidget {
@@ -94,14 +87,10 @@ public:
         setCursor(Qt::SizeFDiagCursor);
         setToolTip("Drag this corner to resize Daisywheel");
         setAccessibleName("Resize Daisywheel");
-        geometryTimer.setSingleShot(true);
-        QObject::connect(&geometryTimer,&QTimer::timeout,this,[this]{
-            if(resizing && this->resizeInPlace && geometryChanged)geometryChanged(pendingGeometry);
-        });
     }
     std::function<QRect()> geometryProvider;
     std::function<void(const QRect &)> geometryCommitted;
-    QTimer geometryTimer;
+    std::function<void(const QRect &)> geometryPreview;
     void mousePressEvent(QMouseEvent *event) override {
         if(event->button()==Qt::LeftButton){
             origin=event->globalPosition().toPoint();
@@ -128,7 +117,7 @@ public:
             const QRect geometry(initialGeometry.topLeft(),QSize(width,height));
             if(geometryChanged){
                 pendingGeometry=geometry;
-                if(!geometryTimer.isActive())geometryTimer.start(40);
+                if(geometryPreview)geometryPreview(geometry);
                 event->accept();return;
             }
             window()->resize(width,height);
@@ -147,10 +136,10 @@ public:
     void mouseReleaseEvent(QMouseEvent *event) override {
         if(event->button()==Qt::LeftButton){
             if(resizing && resizeInPlace && geometryChanged && !pendingGeometry.isNull()){
-                geometryTimer.stop();
                 geometryChanged(pendingGeometry);
                 if(geometryCommitted)geometryCommitted(pendingGeometry);
             }
+            if(geometryPreview)geometryPreview(QRect());
             resizing=false;pendingGeometry=QRect();event->accept();return;
         }
         QWidget::mouseReleaseEvent(event);
@@ -346,7 +335,12 @@ int main(int argc,char **argv){
     auto *minimalBar=new QWidget(content);
     auto *minimalBarLayout=new QHBoxLayout(minimalBar);
     minimalBarLayout->setContentsMargins(0,0,0,0);
-    minimalBarLayout->addStretch();
+    auto *minimalMoveHandle=new MoveHandle("⠿ Drag to move",minimalBar);
+    minimalMoveHandle->setToolTip("Drag here to move the wheel");
+    minimalMoveHandle->setCursor(Qt::SizeAllCursor);
+    minimalBarLayout->addWidget(minimalMoveHandle,1);
+    auto *minimalGeometryHint=new QLabel(minimalBar);
+    minimalBarLayout->addWidget(minimalGeometryHint);
     auto *restoreControls=new QPushButton("Show controls",minimalBar);
     restoreControls->setToolTip("Show full controls");
     restoreControls->setAccessibleName("Show full controls");
@@ -355,6 +349,11 @@ int main(int argc,char **argv){
     box->insertWidget(box->indexOf(view),minimalBar);
     minimalBar->hide();
     QObject::connect(restoreControls,&QPushButton::clicked,[&]{minimalMode->setChecked(false);});
+    minimalMoveHandle->pinned=pin->isChecked();
+    QObject::connect(pin,&QCheckBox::toggled,[minimalMoveHandle](bool checked){minimalMoveHandle->pinned=checked;});
+    resizeHandle->geometryPreview=[minimalGeometryHint](const QRect &geometry){
+        minimalGeometryHint->setText(geometry.isNull()?QString():QString("%1 × %2").arg(geometry.width()).arg(geometry.height()));
+    };
     TouchActivation activation;activation.activate=[=]{view->show();};
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
@@ -501,12 +500,22 @@ int main(int argc,char **argv){
         handle->pinned=pin->isChecked();
         handle->setText("Daisywheel · drag here to move");
         handle->geometryProvider=[&]{return kde->overlayGeometry();};
+        minimalMoveHandle->geometryProvider=[&]{return kde->overlayGeometry();};
         resizeHandle->geometryProvider=[&]{return kde->overlayGeometry();};
+        handle->geometryPreview=[handle](const QRect &geometry){
+            handle->setText(geometry.isNull()?QString("Daisywheel · drag here to move"):
+                            QString("Move preview: %1, %2").arg(geometry.x()).arg(geometry.y()));
+        };
         handle->geometryChanged=[&](const QRect &geometry){
             kde->setOverlayGeometry(geometry);
         };
         handle->geometryCommitted=[&](const QRect &geometry){
             settings.setValue("kdeOverlayGeometry",geometry);
+        };
+        minimalMoveHandle->geometryChanged=handle->geometryChanged;
+        minimalMoveHandle->geometryCommitted=handle->geometryCommitted;
+        minimalMoveHandle->geometryPreview=[minimalGeometryHint](const QRect &geometry){
+            minimalGeometryHint->setText(geometry.isNull()?QString():QString("%1, %2").arg(geometry.x()).arg(geometry.y()));
         };
         resizeHandle->geometryChanged=[&](const QRect &geometry){
             kde->setOverlayGeometry(geometry);
@@ -514,7 +523,14 @@ int main(int argc,char **argv){
         resizeHandle->geometryCommitted=[&](const QRect &geometry){
             settings.setValue("kdeOverlayGeometry",geometry);
         };
+        resizeHandle->geometryPreview=[minimalGeometryHint,handle](const QRect &geometry){
+            const QString text=geometry.isNull()?QString():QString("%1 × %2").arg(geometry.width()).arg(geometry.height());
+            minimalGeometryHint->setText(text);
+            if(!geometry.isNull())handle->setText("Resize preview: "+text);
+            else handle->setText("Daisywheel · drag here to move");
+        };
         QObject::connect(pin,&QCheckBox::toggled,[&](bool checked){handle->pinned=checked;});
+        QObject::connect(pin,&QCheckBox::toggled,[minimalMoveHandle](bool checked){minimalMoveHandle->pinned=checked;});
         window.setAttribute(Qt::WA_ShowWithoutActivating);
         addControl(new QLabel("Automatic opening follows KDE → Virtual Keyboard\nHome / Back opens manually regardless of that setting"));
         kde->activation=[&](bool active){
