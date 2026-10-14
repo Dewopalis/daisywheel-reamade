@@ -6,6 +6,9 @@ the form `vMAJOR.MINOR.PATCH` additionally create a **draft** GitHub release aft
 every build succeeds. No personal access token or repository secret is needed;
 the release job uses GitHub's scoped automatic token.
 
+The project is licensed under GPL-3.0-only. Native packages include the license
+text with their documentation; the RPM metadata declares the SPDX license ID.
+
 ## Downloads produced
 
 | Download | Build environment | Runtime requirement |
