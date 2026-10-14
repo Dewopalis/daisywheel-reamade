@@ -64,6 +64,7 @@ bool KdeInput::attach(QWidget *widget){
     QScreen *screen=widget->screen();if(!screen)screen=QGuiApplication::primaryScreen();
     const QRect area=screen?screen->availableGeometry():QRect(0,0,1280,720);
     impl->geometry=QRect(area.right()+1-24-widget->width(),area.bottom()+1-24-widget->height(),widget->width(),widget->height());
+    layer->setDesiredSize(widget->size());
     layer->setMargins(QMargins(0,0,24,24));
 #ifdef DAISYWHEEL_LEGACY_LAYER_SCREEN
     layer->setScreenConfiguration(LayerShellQt::Window::ScreenFromCompositor);
@@ -85,6 +86,7 @@ void KdeInput::setOverlayGeometry(const QRect &requested){
     const int x=qBound(area.left(),requested.x(),area.right()+1-size.width());
     const int y=qBound(area.top(),requested.y(),area.bottom()+1-size.height());
     impl->geometry=QRect(x,y,size.width(),size.height());
+    impl->layer->setDesiredSize(size);
     impl->layer->setMargins(QMargins(0,0,area.right()+1-impl->geometry.right()-1,
                                            area.bottom()+1-impl->geometry.bottom()-1));
 }

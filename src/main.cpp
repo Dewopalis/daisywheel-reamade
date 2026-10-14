@@ -8,7 +8,6 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QPushButton>
-#include <QToolButton>
 #include <QTimer>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -261,10 +260,15 @@ int main(int argc,char **argv){
     window.setWindowFlags(Qt::Window|Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
     window.setAttribute(Qt::WA_TranslucentBackground);
     auto *box=new QVBoxLayout(&window);
+    auto *windowLayout=box;
+    const QMargins fullWindowMargins=windowLayout->contentsMargins();
+    const int fullWindowSpacing=windowLayout->spacing();
     auto *content=new QWidget;content->setObjectName("panel");
     content->setStyleSheet("QWidget#panel { background: #1d2229; border: 1px solid #536075; border-radius: 10px; }");
     box->addWidget(content);
     box=new QVBoxLayout(content);
+    const QMargins fullContentMargins=box->contentsMargins();
+    const int fullContentSpacing=box->spacing();
     QList<QWidget*> fullModeWidgets;
     auto addControl=[&](QWidget *control){box->addWidget(control);fullModeWidgets.append(control);return control;};
     auto *headerWidget=new QWidget(content);
@@ -314,14 +318,18 @@ int main(int argc,char **argv){
     editor->setVisible(!systemMode);
     auto *view=new WheelView;box->addWidget(view);
     if(windowsMode)view->setMinimumSize(360,310);
-    auto *restoreControls=new QToolButton(content);
-    restoreControls->setText("≡");
+    auto *minimalBar=new QWidget(content);
+    auto *minimalBarLayout=new QHBoxLayout(minimalBar);
+    minimalBarLayout->setContentsMargins(0,0,0,0);
+    minimalBarLayout->addStretch();
+    auto *restoreControls=new QPushButton("Show controls",minimalBar);
     restoreControls->setToolTip("Show full controls");
     restoreControls->setAccessibleName("Show full controls");
-    restoreControls->setFixedSize(28,28);
-    restoreControls->setStyleSheet("QToolButton { color: #dce6f5; background: #253044; border: 1px solid #536075; border-radius: 6px; font-size: 18px; }");
-    restoreControls->hide();
-    QObject::connect(restoreControls,&QToolButton::clicked,[&]{minimalMode->setChecked(false);});
+    restoreControls->setFixedHeight(28);
+    minimalBarLayout->addWidget(restoreControls);
+    box->insertWidget(box->indexOf(view),minimalBar);
+    minimalBar->hide();
+    QObject::connect(restoreControls,&QPushButton::clicked,[&]{minimalMode->setChecked(false);});
     TouchActivation activation;activation.activate=[=]{view->show();};
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
@@ -566,9 +574,16 @@ int main(int argc,char **argv){
         for(auto *control:fullModeWidgets)
             control->setVisible(!enabled && (control!=editor || !systemMode));
         view->setMinimumSize(enabled?QSize(280,280):windowsMode?QSize(360,310):QSize(420,360));
-        window.adjustSize();
-        restoreControls->setVisible(enabled);
-        if(enabled){restoreControls->move(content->width()-restoreControls->width()-5,5);restoreControls->raise();}
+        minimalBar->setVisible(enabled);
+        if(enabled){
+            windowLayout->setContentsMargins(0,0,0,0);windowLayout->setSpacing(0);
+            box->setContentsMargins(1,1,1,1);box->setSpacing(0);
+            window.resize(view->minimumSize().width()+2,view->minimumSize().height()+32);
+        }else{
+            windowLayout->setContentsMargins(fullWindowMargins);windowLayout->setSpacing(fullWindowSpacing);
+            box->setContentsMargins(fullContentMargins);box->setSpacing(fullContentSpacing);
+            window.adjustSize();
+        }
 #ifdef DAISYWHEEL_KDE
         if(kde){QRect geometry=kde->overlayGeometry();geometry.setSize(window.size());kde->setOverlayGeometry(geometry);}
 #endif
