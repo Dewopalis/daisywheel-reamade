@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Daisywheel REAmade
+Comment=Controller-first keyboard for KDE Wayland
+Exec=daisywheel --kde-input-method
+Icon=daisywheel-reamade
+Terminal=false
+NoDisplay=true
+Categories=Utility;Accessibility;
+X-KDE-Wayland-VirtualKeyboard=true

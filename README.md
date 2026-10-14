@@ -12,6 +12,17 @@ The goal is a keyboard for Windows handhelds such as the ROG Ally and Linux syst
 
 **Current status: Linux/KDE Wayland and Windows prototypes.** Controller typing into another application has been confirmed on both development PCs. The `windows-integration` branch adds system input, a focus-preserving overlay, automatic/manual opening and opt-in startup. Windows sign-in startup, broader application compatibility, handheld hardware and Steam Deck Gaming Mode still need validation. There are no packaged releases yet.
 
+## Download builds
+
+The [Build packages workflow](.github/workflows/packages.yml) prepares Windows
+setup EXE/portable ZIP, Debian DEB, Fedora RPM and Linux AppImage downloads.
+Until a tested release is published, get development artifacts from the repository's
+Actions page. Version tags produce draft releases for review.
+
+See [installation and release packaging](docs/releases/packaging.md) for supported
+platform baselines, installing downloads and creating a release. The source-build
+instructions below remain available for developers.
+
 ## Platform support
 
 | Platform | Status |

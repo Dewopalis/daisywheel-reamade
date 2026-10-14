@@ -56,7 +56,11 @@ bool KdeInput::attach(QWidget *widget){
     layer->setExclusiveZone(0);
     layer->setAnchors(LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorBottom)|LayerShellQt::Window::AnchorRight);
     layer->setMargins(QMargins(0,0,24,24));
+#ifdef DAISYWHEEL_LEGACY_LAYER_SCREEN
+    layer->setScreenConfiguration(LayerShellQt::Window::ScreenFromCompositor);
+#else
     layer->setWantsToBeOnActiveScreen(true);
+#endif
     std::fprintf(stderr,"Daisywheel: non-focusing overlay configured\n");
     return true;
 }
