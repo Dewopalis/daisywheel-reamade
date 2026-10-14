@@ -240,7 +240,7 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | Opacity | 30–100%, affects panel and characters together; saved between launches |
 | Controller shortcut | Saved between launches |
 | Minimal mode | Shows the wheel at a compact size; use the upper-right **≡** button or hold the selected controller shortcut to restore the controls |
-| KDE system-mode position | Drag the header or corner to preview the target; position and size apply and save on release |
+| KDE system-mode position | Drag the header or corner to see a translucent wheel preview; position and size apply and save on release |
 | Drag handle / pin toggle | Drag the header to move and enable **Pin position** to lock it |
 | Hide window | Keeps controller handling running |
 | Quit | Stops the process; controller reopening requires relaunch |
@@ -249,9 +249,9 @@ KWin's `VirtualKeyboard.visible` property describes its native input panel, not 
 
 Unpin the wheel, drag the header to move it, then pin it if you want to lock the
 position. Drag the small diagonal grip in the top-left corner to resize. During
-a KDE drag, the target position or size is shown in the control bar; the layer
-shell applies it on release to avoid compositor rubber-banding. Minimal mode
-also has a dedicated drag handle next to **Show controls**. Windows and KDE
+a KDE drag, a translucent wheel preview shows the target position or size; the
+layer shell applies it on release to avoid compositor rubber-banding. Minimal
+mode also has a compact drag handle next to **Show controls**. Windows and KDE
 system mode save position and size between launches. Windows keeps the
 position on its monitor and clamps it to the available desktop area after size
 or display changes.

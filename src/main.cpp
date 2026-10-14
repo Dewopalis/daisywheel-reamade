@@ -334,26 +334,27 @@ int main(int argc,char **argv){
     if(windowsMode)view->setMinimumSize(360,310);
     auto *minimalBar=new QWidget(content);
     auto *minimalBarLayout=new QHBoxLayout(minimalBar);
-    minimalBarLayout->setContentsMargins(0,0,0,0);
-    auto *minimalMoveHandle=new MoveHandle("⠿ Drag to move",minimalBar);
+    minimalBarLayout->setContentsMargins(2,1,2,1);
+    minimalBarLayout->setSpacing(2);
+    minimalBar->setFixedHeight(30);
+    auto *minimalMoveHandle=new MoveHandle("⠿",minimalBar);
+    minimalMoveHandle->setAlignment(Qt::AlignCenter);
+    minimalMoveHandle->setFixedSize(28,26);
     minimalMoveHandle->setToolTip("Drag here to move the wheel");
+    minimalMoveHandle->setAccessibleName("Drag to move Daisywheel");
     minimalMoveHandle->setCursor(Qt::SizeAllCursor);
-    minimalBarLayout->addWidget(minimalMoveHandle,1);
-    auto *minimalGeometryHint=new QLabel(minimalBar);
-    minimalBarLayout->addWidget(minimalGeometryHint);
+    minimalBarLayout->addWidget(minimalMoveHandle);
+    minimalBarLayout->addStretch();
     auto *restoreControls=new QPushButton("Show controls",minimalBar);
     restoreControls->setToolTip("Show full controls");
     restoreControls->setAccessibleName("Show full controls");
-    restoreControls->setFixedHeight(28);
+    restoreControls->setFixedSize(96,26);
     minimalBarLayout->addWidget(restoreControls);
     box->insertWidget(box->indexOf(view),minimalBar);
     minimalBar->hide();
     QObject::connect(restoreControls,&QPushButton::clicked,[&]{minimalMode->setChecked(false);});
     minimalMoveHandle->pinned=pin->isChecked();
     QObject::connect(pin,&QCheckBox::toggled,[minimalMoveHandle](bool checked){minimalMoveHandle->pinned=checked;});
-    resizeHandle->geometryPreview=[minimalGeometryHint](const QRect &geometry){
-        minimalGeometryHint->setText(geometry.isNull()?QString():QString("%1 × %2").arg(geometry.width()).arg(geometry.height()));
-    };
     TouchActivation activation;activation.activate=[=]{view->show();};
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
@@ -502,9 +503,9 @@ int main(int argc,char **argv){
         handle->geometryProvider=[&]{return kde->overlayGeometry();};
         minimalMoveHandle->geometryProvider=[&]{return kde->overlayGeometry();};
         resizeHandle->geometryProvider=[&]{return kde->overlayGeometry();};
-        handle->geometryPreview=[handle](const QRect &geometry){
-            handle->setText(geometry.isNull()?QString("Daisywheel · drag here to move"):
-                            QString("Move preview: %1, %2").arg(geometry.x()).arg(geometry.y()));
+        handle->geometryPreview=[&](const QRect &geometry){
+            if(geometry.isNull())kde->clearOverlayGeometryPreview();
+            else kde->previewOverlayGeometry(geometry);
         };
         handle->geometryChanged=[&](const QRect &geometry){
             kde->setOverlayGeometry(geometry);
@@ -514,8 +515,9 @@ int main(int argc,char **argv){
         };
         minimalMoveHandle->geometryChanged=handle->geometryChanged;
         minimalMoveHandle->geometryCommitted=handle->geometryCommitted;
-        minimalMoveHandle->geometryPreview=[minimalGeometryHint](const QRect &geometry){
-            minimalGeometryHint->setText(geometry.isNull()?QString():QString("%1, %2").arg(geometry.x()).arg(geometry.y()));
+        minimalMoveHandle->geometryPreview=[&](const QRect &geometry){
+            if(geometry.isNull())kde->clearOverlayGeometryPreview();
+            else kde->previewOverlayGeometry(geometry);
         };
         resizeHandle->geometryChanged=[&](const QRect &geometry){
             kde->setOverlayGeometry(geometry);
@@ -523,11 +525,9 @@ int main(int argc,char **argv){
         resizeHandle->geometryCommitted=[&](const QRect &geometry){
             settings.setValue("kdeOverlayGeometry",geometry);
         };
-        resizeHandle->geometryPreview=[minimalGeometryHint,handle](const QRect &geometry){
-            const QString text=geometry.isNull()?QString():QString("%1 × %2").arg(geometry.width()).arg(geometry.height());
-            minimalGeometryHint->setText(text);
-            if(!geometry.isNull())handle->setText("Resize preview: "+text);
-            else handle->setText("Daisywheel · drag here to move");
+        resizeHandle->geometryPreview=[&](const QRect &geometry){
+            if(geometry.isNull())kde->clearOverlayGeometryPreview();
+            else kde->previewOverlayGeometry(geometry);
         };
         QObject::connect(pin,&QCheckBox::toggled,[&](bool checked){handle->pinned=checked;});
         QObject::connect(pin,&QCheckBox::toggled,[minimalMoveHandle](bool checked){minimalMoveHandle->pinned=checked;});
