@@ -6,6 +6,10 @@ Inspired by Steam's original Daisywheel, REAmade lets you select a petal with th
 
 The goal is a keyboard for Windows handhelds such as the ROG Ally and Linux systems running KDE Plasma, including CachyOS and Steam Deck Desktop Mode.
 
+![Daisywheel REAmade typing Hello World into KWrite using an Xbox controller](docs/media/hello-world.gif)
+
+*Controller typing into KWrite on KDE Plasma / Wayland.*
+
 **Current status: early Linux/KDE Wayland prototype.** Controller typing into another application has been confirmed on the development PC. Windows system input and Steam Deck Gaming Mode are not implemented. There are no packaged releases yet; build from source using the instructions below.
 
 ## Platform support
