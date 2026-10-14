@@ -99,7 +99,8 @@ public:
             const int width=qBound(minimumWidth,initialGeometry.width()-delta.x(),bounds.width());
             const int height=qBound(minimumHeight,initialGeometry.height()-delta.y(),bounds.height());
             const QRect geometry(initialGeometry.topLeft(),QSize(width,height));
-            if(geometryChanged)geometryChanged(geometry);else window()->resize(width,height);
+            if(geometryChanged){geometryChanged(geometry);event->accept();return;}
+            window()->resize(width,height);
         }else{
             const int minimumWidth=qMin(requestedMinimum.width(),bounds.width());
             const int minimumHeight=qMin(requestedMinimum.height(),bounds.height());
