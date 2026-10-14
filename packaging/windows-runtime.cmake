@@ -11,6 +11,7 @@ foreach(library IN LISTS bundled_dlls)
   get_filename_component(directory "${library}" DIRECTORY)
   list(APPEND bundled_dll_directories "${directory}")
 endforeach()
+list(APPEND bundled_dll_directories "${TOOLCHAIN_BIN}")
 list(REMOVE_DUPLICATES bundled_dll_directories)
 
 file(GET_RUNTIME_DEPENDENCIES
