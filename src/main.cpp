@@ -1,5 +1,6 @@
 #include "wheel.h"
 #include "visibility.h"
+#include "placement.h"
 #include <QApplication>
 #include <QWidget>
 #include <QPainter>
@@ -171,7 +172,15 @@ int main(int argc,char **argv){
     auto *handle=new MoveHandle("Daisywheel · drag here to move");box->addWidget(handle);
     auto *pin=new QCheckBox("Pin position (lock dragging)");
     pin->setChecked(settings.value("pinned",false).toBool());handle->pinned=pin->isChecked();box->addWidget(pin);
-    QObject::connect(pin,&QCheckBox::toggled,[&](bool checked){handle->pinned=checked;settings.setValue("pinned",checked);});
+    std::optional<QPoint> pinnedPosition;
+    if(windowsMode && settings.contains("windowsPinnedPosition"))
+        pinnedPosition=settings.value("windowsPinnedPosition").toPoint();
+    QObject::connect(pin,&QCheckBox::toggled,[&](bool checked){
+        handle->pinned=checked;settings.setValue("pinned",checked);
+        if(windowsMode && checked && window.isVisible()){
+            pinnedPosition=window.pos();settings.setValue("windowsPinnedPosition",*pinnedPosition);
+        }
+    });
     auto *opacityLabel=new QLabel;box->addWidget(opacityLabel);
     auto *opacity=new QSlider(Qt::Horizontal);opacity->setRange(30,100);
     opacity->setValue(settings.value("opacity",100).toInt());box->addWidget(opacity);
@@ -217,8 +226,13 @@ int main(int argc,char **argv){
             if(!screen)screen=QGuiApplication::screenAt(QCursor::pos());
             if(!screen)screen=QGuiApplication::primaryScreen();
             window.adjustSize();
-            const auto area=screen->availableGeometry();
-            window.move(area.right()-window.width()-12,area.bottom()-window.height()-12);
+            QList<QRect> areas;
+            for(auto *display:QGuiApplication::screens())areas.append(display->availableGeometry());
+            window.move(overlayPosition(window.size(),screen->availableGeometry(),areas,
+                                       pin->isChecked()?pinnedPosition:std::nullopt));
+            if(pin->isChecked()){
+                pinnedPosition=window.pos();settings.setValue("windowsPinnedPosition",*pinnedPosition);
+            }
         }
         window.show();
     };
