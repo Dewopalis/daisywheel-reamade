@@ -227,6 +227,8 @@ Characters sit at the physical south/east/west/north face-button positions. SDL 
 
 The shortcut dropdown offers Home/Guide, Back/View and Start/Menu. A chosen shortcut takes precedence over that button's typing action. Steam or desktop bindings may also respond to Guide; select another shortcut if needed. Daisywheel does not suppress those other bindings.
 
+Enable **Minimal mode (wheel only)** to hide the settings and help panel and shrink the window for handheld screens. Press the selected controller shortcut to hide or show Daisywheel; while it is visible, hold that shortcut for about a second to restore the full controls.
+
 ## Opening and appearance
 
 In KDE mode, automatic opening follows KDE's **Show Virtual Keyboard** policy through KWin's `willShowOnActive` API. The overlay starts hidden and picks up applied policy changes without restarting. Failed policy queries disable automatic opening. Windows uses its saved Daisywheel automatic-opening option described above.
@@ -237,7 +239,8 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | --- | --- |
 | Opacity | 30–100%, affects panel and characters together; saved between launches |
 | Controller shortcut | Saved between launches |
-| KDE system-mode position | Drag the header to move; position and size are saved between launches |
+| Minimal mode | Shows only the wheel at a compact size; hold the selected controller shortcut while visible to restore the controls |
+| KDE system-mode position | Drag the header or corner and release to apply; position and size are saved between launches |
 | Drag handle / pin toggle | Drag the header to move and enable **Pin position** to lock it |
 | Hide window | Keeps controller handling running |
 | Quit | Stops the process; controller reopening requires relaunch |
@@ -245,8 +248,10 @@ Controller opening works regardless of the automatic policy and keeps the overla
 KWin's `VirtualKeyboard.visible` property describes its native input panel, not this independent overlay; it is not a reliable visibility check for Daisywheel.
 
 Unpin the wheel, drag the header to move it, then pin it if you want to lock the
-position. Drag the small diagonal grip in the top-left corner to resize. Windows
-and KDE system mode save position and size between launches. Windows keeps the
+position. Drag the small diagonal grip in the top-left corner to resize. KDE
+applies layer-shell movement and resizing when the drag is released so the
+compositor does not fight intermediate updates. Windows and KDE system mode save
+position and size between launches. Windows keeps the
 position on its monitor and clamps it to the available desktop area after size
 or display changes.
 
@@ -298,6 +303,7 @@ Current limits include a provisional English layout, compatibility dependent on 
 
 - [x] Move, pin and resize the KDE system overlay with saved position and size.
 - [x] Resize the application by dragging its corner grip; compact handheld tuning remains planned.
+- [x] Wheel-only Minimal mode with a smaller window footprint.
 - [ ] Further compact-layout tuning for handheld screens.
 - [ ] Validate touch/tablet opening and all KDE opening policies on hardware.
 - [ ] Validate reboot startup, reconnects and multiple displays.

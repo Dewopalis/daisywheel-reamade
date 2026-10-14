@@ -21,6 +21,7 @@
 #include <QMenu>
 #include <QScreen>
 #include <QCursor>
+#include <QList>
 #include <QDir>
 #include <QLockFile>
 #include <QStandardPaths>
@@ -47,17 +48,22 @@ public:
     using QLabel::QLabel;
     void mousePressEvent(QMouseEvent *event) override {
         if(pinned || event->button()!=Qt::LeftButton)return;
-        origin=event->globalPosition().toPoint();initialGeometry=geometryProvider?geometryProvider():window()->geometry();dragging=true;
+        origin=event->position().toPoint();initialGeometry=geometryProvider?geometryProvider():window()->geometry();dragging=true;
         if(!geometryChanged && window()->windowHandle())window()->windowHandle()->startSystemMove();
         event->accept();
     }
     void mouseMoveEvent(QMouseEvent *event) override {
-        if(!dragging || pinned || !geometryChanged){QLabel::mouseMoveEvent(event);return;}
-        const QPoint delta=event->globalPosition().toPoint()-origin;
-        geometryChanged(initialGeometry.translated(delta));event->accept();
+        if(!dragging || pinned){QLabel::mouseMoveEvent(event);return;}
+        event->accept();
     }
     void mouseReleaseEvent(QMouseEvent *event) override {
-        if(event->button()==Qt::LeftButton){dragging=false;event->accept();return;}
+        if(event->button()==Qt::LeftButton){
+            if(dragging && !pinned && geometryChanged){
+                const QPoint delta=event->position().toPoint()-origin;
+                geometryChanged(initialGeometry.translated(delta));
+            }
+            dragging=false;event->accept();return;
+        }
         QLabel::mouseReleaseEvent(event);
     }
 private:
@@ -79,6 +85,7 @@ public:
     void mousePressEvent(QMouseEvent *event) override {
         if(event->button()==Qt::LeftButton){
             origin=event->globalPosition().toPoint();
+            localOrigin=event->position().toPoint();
             initialGeometry=geometryProvider?geometryProvider():window()->geometry();
             resizing=true;
             event->accept();
@@ -88,7 +95,8 @@ public:
     }
     void mouseMoveEvent(QMouseEvent *event) override {
         if(!resizing){QWidget::mouseMoveEvent(event);return;}
-        const QPoint delta=event->globalPosition().toPoint()-origin;
+        const QPoint delta=resizeInPlace?event->position().toPoint()-localOrigin
+                                        :event->globalPosition().toPoint()-origin;
         const QSize requestedMinimum=window()->minimumSizeHint().expandedTo(window()->minimumSize());
         QScreen *screen=window()->screen();
         if(!screen)screen=QGuiApplication::primaryScreen();
@@ -99,7 +107,7 @@ public:
             const int width=qBound(minimumWidth,initialGeometry.width()-delta.x(),bounds.width());
             const int height=qBound(minimumHeight,initialGeometry.height()-delta.y(),bounds.height());
             const QRect geometry(initialGeometry.topLeft(),QSize(width,height));
-            if(geometryChanged){geometryChanged(geometry);event->accept();return;}
+            if(geometryChanged){pendingGeometry=geometry;event->accept();return;}
             window()->resize(width,height);
         }else{
             const int minimumWidth=qMin(requestedMinimum.width(),bounds.width());
@@ -114,7 +122,11 @@ public:
         event->accept();
     }
     void mouseReleaseEvent(QMouseEvent *event) override {
-        if(event->button()==Qt::LeftButton){resizing=false;event->accept();return;}
+        if(event->button()==Qt::LeftButton){
+            if(resizing && resizeInPlace && geometryChanged && !pendingGeometry.isNull())
+                geometryChanged(pendingGeometry);
+            resizing=false;pendingGeometry=QRect();event->accept();return;
+        }
         QWidget::mouseReleaseEvent(event);
     }
     void paintEvent(QPaintEvent *) override {
@@ -127,7 +139,9 @@ private:
     bool resizeInPlace=false;
     bool resizing=false;
     QPoint origin;
+    QPoint localOrigin;
     QRect initialGeometry;
+    QRect pendingGeometry;
 };
 
 class TouchActivation : public QObject {
@@ -250,13 +264,19 @@ int main(int argc,char **argv){
     content->setStyleSheet("QWidget#panel { background: #1d2229; border: 1px solid #536075; border-radius: 10px; }");
     box->addWidget(content);
     box=new QVBoxLayout(content);
-    auto *header=new QHBoxLayout;
+    QList<QWidget*> fullModeWidgets;
+    auto addControl=[&](QWidget *control){box->addWidget(control);fullModeWidgets.append(control);return control;};
+    auto *headerWidget=new QWidget(content);
+    auto *header=new QHBoxLayout(headerWidget);
     auto *resizeHandle=new ResizeHandle(kdeMode);
     header->addWidget(resizeHandle);
     auto *handle=new MoveHandle("Daisywheel · drag here to move");header->addWidget(handle,1);
-    box->addLayout(header);
+    addControl(headerWidget);
     auto *pin=new QCheckBox("Pin position (lock dragging)");
-    pin->setChecked(settings.value("pinned",false).toBool());handle->pinned=pin->isChecked();box->addWidget(pin);
+    pin->setChecked(settings.value("pinned",false).toBool());handle->pinned=pin->isChecked();addControl(pin);
+    auto *minimalMode=new QCheckBox("Minimal mode (wheel only)");
+    minimalMode->setChecked(settings.value("minimalMode",false).toBool());addControl(minimalMode);
+    bool minimalActive=minimalMode->isChecked();
     std::optional<QPoint> pinnedPosition;
     if(windowsMode && settings.contains("windowsPinnedPosition"))
         pinnedPosition=settings.value("windowsPinnedPosition").toPoint();
@@ -272,35 +292,36 @@ int main(int argc,char **argv){
             pinnedPosition=window.pos();settings.setValue("windowsPinnedPosition",*pinnedPosition);
         }
     });
-    auto *opacityLabel=new QLabel;box->addWidget(opacityLabel);
+    auto *opacityLabel=new QLabel;addControl(opacityLabel);
     auto *opacity=new QSlider(Qt::Horizontal);opacity->setRange(30,100);
-    opacity->setValue(settings.value("opacity",100).toInt());box->addWidget(opacity);
+    opacity->setValue(settings.value("opacity",100).toInt());addControl(opacity);
     // Alpha composition works for the content on Wayland without relying on
     // compositor support for QWidget::setWindowOpacity.
     auto *alpha=new QGraphicsOpacityEffect(content);content->setGraphicsEffect(alpha);
     auto setOpacity=[&](int value){alpha->setOpacity(value/100.0);opacityLabel->setText(QString("Opacity: %1%").arg(value));settings.setValue("opacity",value);};
     setOpacity(opacity->value());QObject::connect(opacity,&QSlider::valueChanged,setOpacity);
-    box->addWidget(new QLabel("Controller shortcut (works while running in background)"));
+    addControl(new QLabel("Controller shortcut (works while running in background)"));
     auto *shortcut=new QComboBox;
     shortcut->addItem("Home / Guide",SDL_CONTROLLER_BUTTON_GUIDE);
     shortcut->addItem("Back / View",SDL_CONTROLLER_BUTTON_BACK);
     shortcut->addItem("Start / Menu",SDL_CONTROLLER_BUTTON_START);
     int shortcutIndex=shortcut->findData(settings.value("shortcut",SDL_CONTROLLER_BUTTON_GUIDE));
-    shortcut->setCurrentIndex(shortcutIndex<0?0:shortcutIndex);box->addWidget(shortcut);
+    shortcut->setCurrentIndex(shortcutIndex<0?0:shortcutIndex);addControl(shortcut);
     QObject::connect(shortcut,&QComboBox::currentIndexChanged,[&](int){settings.setValue("shortcut",shortcut->currentData());});
-    auto *status=new QLabel;box->addWidget(status);
-    auto *editor=new QPlainTextEdit;editor->setPlaceholderText("Tap here, then type with your controller");editor->setMaximumHeight(110);box->addWidget(editor);
+    auto *status=new QLabel;addControl(status);
+    auto *editor=new QPlainTextEdit;editor->setPlaceholderText("Tap here, then type with your controller");editor->setMaximumHeight(110);addControl(editor);
     editor->setVisible(!systemMode);
     auto *view=new WheelView;box->addWidget(view);
     if(windowsMode)view->setMinimumSize(360,310);
     TouchActivation activation;activation.activate=[=]{view->show();};
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
-    box->addWidget(new QLabel("Left stick: petal · Face buttons: character · LB: shift · RB: symbols\n"
-                             "Left stick click: space · Right stick click: backspace · Start: enter · Back: hide"));
-    auto *toggle=new QPushButton("Show / hide wheel");box->addWidget(toggle);
+    addControl(new QLabel("Left stick: petal · Face buttons: character · LB: shift · RB: symbols\n"
+                             "Left stick click: space · Right stick click: backspace · Start: enter · Back: hide\n"
+                             "Hold the selected controller shortcut to restore controls from Minimal mode"));
+    auto *toggle=new QPushButton("Show / hide wheel");addControl(toggle);
     QObject::connect(toggle,&QPushButton::clicked,[=]{view->setVisible(!view->isVisible());});
-    auto *hide=new QPushButton("Hide window · controller shortcut to reopen");box->addWidget(hide);
+    auto *hide=new QPushButton("Hide window · controller shortcut to reopen");addControl(hide);
     VisibilityPolicy visibility;
     QObject::connect(hide,&QPushButton::clicked,[&]{visibility.manual(false);window.hide();});
     auto showOverlay=[&]{
@@ -337,7 +358,7 @@ int main(int argc,char **argv){
         }
 #endif
     };
-    auto *quit=new QPushButton("Quit");box->addWidget(quit);
+    auto *quit=new QPushButton("Quit");addControl(quit);
     QObject::connect(quit,&QPushButton::clicked,&app,&QApplication::quit);
     auto sendText=[&](const QString &text){
 #ifdef Q_OS_WIN
@@ -365,22 +386,27 @@ int main(int argc,char **argv){
     SDL_GameController *controller=nullptr;
     QTimer timer;
     bool verificationSent=false;
+    bool shortcutButtonDown=false;
+    Uint32 shortcutPressedAt=0;
     QObject::connect(&timer,&QTimer::timeout,[&]{
         if(sdlOk){SDL_Event event;
             while(SDL_PollEvent(&event)){
                 if(event.type==SDL_CONTROLLERDEVICEADDED&&!controller)controller=SDL_GameControllerOpen(event.cdevice.which);
-                if(event.type==SDL_CONTROLLERDEVICEREMOVED&&controller&&event.cdevice.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))){SDL_GameControllerClose(controller);controller=nullptr;view->selected=-1;}
+                if(event.type==SDL_CONTROLLERDEVICEREMOVED&&controller&&event.cdevice.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))){SDL_GameControllerClose(controller);controller=nullptr;view->selected=-1;shortcutButtonDown=false;}
+                if(event.type==SDL_CONTROLLERBUTTONUP&&controller&&event.cbutton.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))&&event.cbutton.button==shortcut->currentData().toInt()){
+                    if(shortcutButtonDown){
+                        const Uint32 held=SDL_GetTicks()-shortcutPressedAt;
+                        if(minimalActive&&window.isVisible()&&held>=800)minimalMode->setChecked(false);
+                        else if(systemMode)manualToggle();
+                        else if(window.isVisible()&&view->isVisible())window.hide();
+                        else {view->show();window.show();}
+                        shortcutButtonDown=false;
+                    }
+                    continue;
+                }
                 if(event.type!=SDL_CONTROLLERBUTTONDOWN||!controller||event.cbutton.which!=SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller)))continue;
                 if(event.cbutton.button==shortcut->currentData().toInt()) {
-                    if(windowsMode){manualToggle();continue;}
-#ifdef DAISYWHEEL_KDE
-                    if(kde) {
-                        manualToggle();
-                        continue;
-                    }
-#endif
-                    if(window.isVisible()&&view->isVisible())window.hide();
-                    else {view->show();window.show();}
+                    shortcutButtonDown=true;shortcutPressedAt=SDL_GetTicks();
                     continue;
                 }
                 if(windowsMode && event.cbutton.button==SDL_CONTROLLER_BUTTON_BACK){manualToggle();continue;}
@@ -444,7 +470,7 @@ int main(int argc,char **argv){
         };
         QObject::connect(pin,&QCheckBox::toggled,[&](bool checked){handle->pinned=checked;});
         window.setAttribute(Qt::WA_ShowWithoutActivating);
-        box->addWidget(new QLabel("Automatic opening follows KDE → Virtual Keyboard\nHome / Back opens manually regardless of that setting"));
+        addControl(new QLabel("Automatic opening follows KDE → Virtual Keyboard\nHome / Back opens manually regardless of that setting"));
         kde->activation=[&](bool active){
             if(!active){visibility.contextEnded();if(!visibility.visible(false,false))window.hide();}
         };
@@ -482,14 +508,14 @@ int main(int argc,char **argv){
         focusWatcher=std::make_unique<WindowsFocus>();
         windowsInput.attach(window);
         handle->setText("Daisywheel · Windows overlay · drag here to move");
-        box->addWidget(new QLabel("Focus a text field, then use your controller shortcut to open"));
+        addControl(new QLabel("Focus a text field, then use your controller shortcut to open"));
         auto *automatic=new QCheckBox("Open automatically when a text field is selected");
-        automatic->setChecked(settings.value("windowsAutomatic",false).toBool());box->addWidget(automatic);
+        automatic->setChecked(settings.value("windowsAutomatic",false).toBool());addControl(automatic);
         focusWatcher->setEnabled(automatic->isChecked());
         QObject::connect(automatic,&QCheckBox::toggled,[&](bool enabled){settings.setValue("windowsAutomatic",enabled);focusWatcher->setEnabled(enabled);});
         auto *startup=new QCheckBox("Start Daisywheel when I sign in to Windows");
         QSettings startupSettings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",QSettings::NativeFormat);
-        startup->setChecked(startupSettings.contains("DaisywheelREAmade"));box->addWidget(startup);
+        startup->setChecked(startupSettings.contains("DaisywheelREAmade"));addControl(startup);
         QObject::connect(startup,&QCheckBox::toggled,[&](bool enabled){
             QSettings run("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",QSettings::NativeFormat);
             if(enabled)run.setValue("DaisywheelREAmade",QString("\"%1\" --windows-input").arg(QDir::toNativeSeparators(QCoreApplication::applicationFilePath())));
@@ -526,6 +552,20 @@ int main(int argc,char **argv){
         windowsPolicyTimer.start(200);
     }
 #endif
+    auto applyMinimalMode=[&](bool enabled){
+        minimalActive=enabled;
+        for(auto *control:fullModeWidgets)
+            control->setVisible(!enabled && (control!=editor || !systemMode));
+        view->setMinimumSize(enabled?QSize(280,280):windowsMode?QSize(360,310):QSize(420,360));
+        window.adjustSize();
+#ifdef DAISYWHEEL_KDE
+        if(kde){QRect geometry=kde->overlayGeometry();geometry.setSize(window.size());kde->setOverlayGeometry(geometry);}
+#endif
+    };
+    QObject::connect(minimalMode,&QCheckBox::toggled,[&](bool enabled){
+        settings.setValue("minimalMode",enabled);applyMinimalMode(enabled);
+    });
+    applyMinimalMode(minimalActive);
     if(!windowsMode)window.adjustSize();
     if(!systemMode)window.show();
     if(app.arguments().contains("--smoke-test"))QTimer::singleShot(1000,&app,&QApplication::quit);
