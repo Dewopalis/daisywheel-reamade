@@ -237,17 +237,18 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | --- | --- |
 | Opacity | 30–100%, affects panel and characters together; saved between launches |
 | Controller shortcut | Saved between launches |
-| KDE system-mode position | Bottom right of the active display; free placement not implemented |
-| Drag handle / pin toggle | Windows pins preserve the chosen position across hiding and restarts; local test mode locks dragging; disabled in KDE system mode |
+| KDE system-mode position | Drag the header to move; position and size are saved between launches |
+| Drag handle / pin toggle | Drag the header to move and enable **Pin position** to lock it |
 | Hide window | Keeps controller handling running |
 | Quit | Stops the process; controller reopening requires relaunch |
 
 KWin's `VirtualKeyboard.visible` property describes its native input panel, not this independent overlay; it is not a reliable visibility check for Daisywheel.
 
-On Windows, unpin the wheel, drag it into place, then pin it. Reopening preserves
-that position on its monitor, even when the target app is on another display.
-If the monitor disappears, placement falls back to the target display. Positions
-are kept within the available desktop area after size or display changes.
+Unpin the wheel, drag the header to move it, then pin it if you want to lock the
+position. Drag the small diagonal grip in the top-left corner to resize. Windows
+and KDE system mode save position and size between launches. Windows keeps the
+position on its monitor and clamps it to the available desktop area after size
+or display changes.
 
 ## Updating and removing on KDE
 
@@ -295,7 +296,7 @@ Current limits include a provisional English layout, compatibility dependent on 
 
 ## Roadmap
 
-- [ ] Configurable pinned placement in KDE system mode, with saved anchors and offsets.
+- [x] Move, pin and resize the KDE system overlay with saved position and size.
 - [x] Resize the application by dragging its corner grip; compact handheld tuning remains planned.
 - [ ] Further compact-layout tuning for handheld screens.
 - [ ] Validate touch/tablet opening and all KDE opening policies on hardware.

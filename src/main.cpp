@@ -42,11 +42,28 @@
 class MoveHandle : public QLabel {
 public:
     bool pinned=false;
+    std::function<void(const QRect &)> geometryChanged;
+    std::function<QRect()> geometryProvider;
     using QLabel::QLabel;
     void mousePressEvent(QMouseEvent *event) override {
-        if(!pinned && event->button()==Qt::LeftButton && window()->windowHandle())
-            window()->windowHandle()->startSystemMove();
+        if(pinned || event->button()!=Qt::LeftButton)return;
+        origin=event->globalPosition().toPoint();initialGeometry=geometryProvider?geometryProvider():window()->geometry();dragging=true;
+        if(!geometryChanged && window()->windowHandle())window()->windowHandle()->startSystemMove();
+        event->accept();
     }
+    void mouseMoveEvent(QMouseEvent *event) override {
+        if(!dragging || pinned || !geometryChanged){QLabel::mouseMoveEvent(event);return;}
+        const QPoint delta=event->globalPosition().toPoint()-origin;
+        geometryChanged(initialGeometry.translated(delta));event->accept();
+    }
+    void mouseReleaseEvent(QMouseEvent *event) override {
+        if(event->button()==Qt::LeftButton){dragging=false;event->accept();return;}
+        QLabel::mouseReleaseEvent(event);
+    }
+private:
+    bool dragging=false;
+    QPoint origin;
+    QRect initialGeometry;
 };
 
 class ResizeHandle : public QWidget {
@@ -58,10 +75,11 @@ public:
         setToolTip("Drag this corner to resize Daisywheel");
         setAccessibleName("Resize Daisywheel");
     }
+    std::function<QRect()> geometryProvider;
     void mousePressEvent(QMouseEvent *event) override {
         if(event->button()==Qt::LeftButton){
             origin=event->globalPosition().toPoint();
-            initialGeometry=window()->geometry();
+            initialGeometry=geometryProvider?geometryProvider():window()->geometry();
             resizing=true;
             event->accept();
             return;
@@ -80,7 +98,8 @@ public:
             const int minimumHeight=qMin(requestedMinimum.height(),bounds.height());
             const int width=qBound(minimumWidth,initialGeometry.width()-delta.x(),bounds.width());
             const int height=qBound(minimumHeight,initialGeometry.height()-delta.y(),bounds.height());
-            window()->resize(width,height);
+            const QRect geometry(initialGeometry.topLeft(),QSize(width,height));
+            if(geometryChanged)geometryChanged(geometry);else window()->resize(width,height);
         }else{
             const int minimumWidth=qMin(requestedMinimum.width(),bounds.width());
             const int minimumHeight=qMin(requestedMinimum.height(),bounds.height());
@@ -410,8 +429,19 @@ int main(int argc,char **argv){
     QTimer policyTimer;
     bool policyQueryPending=false;
     if(kde){
-        pin->setEnabled(false);handle->pinned=true;
-        handle->setText("Daisywheel · KDE overlay (bottom right)");
+        handle->pinned=pin->isChecked();
+        handle->setText("Daisywheel · drag here to move");
+        handle->geometryProvider=[&]{return kde->overlayGeometry();};
+        resizeHandle->geometryProvider=[&]{return kde->overlayGeometry();};
+        handle->geometryChanged=[&](const QRect &geometry){
+            kde->setOverlayGeometry(geometry);
+            resizeHandle->geometryChanged(geometry);
+        };
+        resizeHandle->geometryChanged=[&](const QRect &geometry){
+            kde->setOverlayGeometry(geometry);
+            settings.setValue("kdeOverlayGeometry",geometry);
+        };
+        QObject::connect(pin,&QCheckBox::toggled,[&](bool checked){handle->pinned=checked;});
         window.setAttribute(Qt::WA_ShowWithoutActivating);
         box->addWidget(new QLabel("Automatic opening follows KDE → Virtual Keyboard\nHome / Back opens manually regardless of that setting"));
         kde->activation=[&](bool active){
@@ -421,6 +451,8 @@ int main(int argc,char **argv){
             std::cerr<<"KDE input method unavailable. Select Daisywheel in KDE Virtual Keyboard settings; KWin must launch it.\n";
             return 3;
         }
+        if(settings.contains("kdeOverlayGeometry"))
+            kde->setOverlayGeometry(settings.value("kdeOverlayGeometry").toRect());
         // Asynchronous policy queries also reflect live System Settings changes
         // and touch on a field whose input context was already active.
         QObject::connect(&policyTimer,&QTimer::timeout,&window,[&]{
