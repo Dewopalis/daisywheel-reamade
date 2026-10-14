@@ -21,7 +21,6 @@
 #include <QMenu>
 #include <QScreen>
 #include <QCursor>
-#include <QFont>
 #include <QDir>
 #include <QLockFile>
 #include <QStandardPaths>
@@ -50,6 +49,67 @@ public:
     }
 };
 
+class ResizeHandle : public QWidget {
+public:
+    explicit ResizeHandle(bool resizeInPlace, QWidget *parent=nullptr)
+        : QWidget(parent), resizeInPlace(resizeInPlace) {
+        setFixedSize(28,28);
+        setCursor(Qt::SizeFDiagCursor);
+        setToolTip("Drag this corner to resize Daisywheel");
+        setAccessibleName("Resize Daisywheel");
+    }
+    void mousePressEvent(QMouseEvent *event) override {
+        if(event->button()==Qt::LeftButton){
+            origin=event->globalPosition().toPoint();
+            initialGeometry=window()->geometry();
+            resizing=true;
+            event->accept();
+            return;
+        }
+        QWidget::mousePressEvent(event);
+    }
+    void mouseMoveEvent(QMouseEvent *event) override {
+        if(!resizing){QWidget::mouseMoveEvent(event);return;}
+        const QPoint delta=event->globalPosition().toPoint()-origin;
+        const QSize requestedMinimum=window()->minimumSizeHint().expandedTo(window()->minimumSize());
+        QScreen *screen=window()->screen();
+        if(!screen)screen=QGuiApplication::primaryScreen();
+        const QRect bounds=screen?screen->availableGeometry():QRect(QPoint(0,0),initialGeometry.size());
+        if(resizeInPlace){
+            const int minimumWidth=qMin(requestedMinimum.width(),bounds.width());
+            const int minimumHeight=qMin(requestedMinimum.height(),bounds.height());
+            const int width=qBound(minimumWidth,initialGeometry.width()-delta.x(),bounds.width());
+            const int height=qBound(minimumHeight,initialGeometry.height()-delta.y(),bounds.height());
+            window()->resize(width,height);
+        }else{
+            const int minimumWidth=qMin(requestedMinimum.width(),bounds.width());
+            const int minimumHeight=qMin(requestedMinimum.height(),bounds.height());
+            const int right=qBound(bounds.left()+minimumWidth,initialGeometry.x()+initialGeometry.width(),bounds.right()+1);
+            const int bottom=qBound(bounds.top()+minimumHeight,initialGeometry.y()+initialGeometry.height(),bounds.bottom()+1);
+            const int x=qBound(bounds.left(),initialGeometry.x()+delta.x(),right-minimumWidth);
+            const int y=qBound(bounds.top(),initialGeometry.y()+delta.y(),bottom-minimumHeight);
+            window()->setGeometry(x,y,right-x,bottom-y);
+        }
+        if(geometryChanged)geometryChanged(window()->geometry());
+        event->accept();
+    }
+    void mouseReleaseEvent(QMouseEvent *event) override {
+        if(event->button()==Qt::LeftButton){resizing=false;event->accept();return;}
+        QWidget::mouseReleaseEvent(event);
+    }
+    void paintEvent(QPaintEvent *) override {
+        QPainter painter(this);painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(QPen(QColor("#9aa8bd"),1.5));
+        painter.drawLine(5,23,23,5);painter.drawLine(13,23,23,13);painter.drawLine(20,23,23,20);
+    }
+    std::function<void(const QRect &)> geometryChanged;
+private:
+    bool resizeInPlace=false;
+    bool resizing=false;
+    QPoint origin;
+    QRect initialGeometry;
+};
+
 class TouchActivation : public QObject {
 public:
     std::function<void()> activate;
@@ -65,7 +125,7 @@ class WheelView : public QWidget {
 public:
     int selected=-1;
     bool upper=false, symbol=false;
-    WheelView() { setMinimumSize(580,500); }
+    WheelView() { setMinimumSize(420,360); }
     void paintEvent(QPaintEvent*) override {
         QPainter p(this); p.setRenderHint(QPainter::Antialiasing);
         p.fillRect(rect(), QColor("#111827"));
@@ -170,12 +230,22 @@ int main(int argc,char **argv){
     content->setStyleSheet("QWidget#panel { background: #1d2229; border: 1px solid #536075; border-radius: 10px; }");
     box->addWidget(content);
     box=new QVBoxLayout(content);
-    auto *handle=new MoveHandle("Daisywheel · drag here to move");box->addWidget(handle);
+    auto *header=new QHBoxLayout;
+    auto *resizeHandle=new ResizeHandle(kdeMode);
+    header->addWidget(resizeHandle);
+    auto *handle=new MoveHandle("Daisywheel · drag here to move");header->addWidget(handle,1);
+    box->addLayout(header);
     auto *pin=new QCheckBox("Pin position (lock dragging)");
     pin->setChecked(settings.value("pinned",false).toBool());handle->pinned=pin->isChecked();box->addWidget(pin);
     std::optional<QPoint> pinnedPosition;
     if(windowsMode && settings.contains("windowsPinnedPosition"))
         pinnedPosition=settings.value("windowsPinnedPosition").toPoint();
+    resizeHandle->geometryChanged=[&](const QRect &geometry){
+        if(windowsMode && pin->isChecked()){
+            pinnedPosition=geometry.topLeft();
+            settings.setValue("windowsPinnedPosition",*pinnedPosition);
+        }
+    };
     QObject::connect(pin,&QCheckBox::toggled,[&](bool checked){
         handle->pinned=checked;settings.setValue("pinned",checked);
         if(windowsMode && checked && window.isVisible()){
@@ -190,10 +260,6 @@ int main(int argc,char **argv){
     auto *alpha=new QGraphicsOpacityEffect(content);content->setGraphicsEffect(alpha);
     auto setOpacity=[&](int value){alpha->setOpacity(value/100.0);opacityLabel->setText(QString("Opacity: %1%").arg(value));settings.setValue("opacity",value);};
     setOpacity(opacity->value());QObject::connect(opacity,&QSlider::valueChanged,setOpacity);
-    auto *sizeLabel=new QLabel;box->addWidget(sizeLabel);
-    auto *sizeSlider=new QSlider(Qt::Horizontal);sizeSlider->setRange(60,120);
-    sizeSlider->setValue(qBound(60,settings.value("uiScale",75).toInt(),120));
-    sizeSlider->setToolTip("Adjust the size of the controls and keyboard wheel");box->addWidget(sizeSlider);
     box->addWidget(new QLabel("Controller shortcut (works while running in background)"));
     auto *shortcut=new QComboBox;
     shortcut->addItem("Home / Guide",SDL_CONTROLLER_BUTTON_GUIDE);
@@ -207,25 +273,6 @@ int main(int argc,char **argv){
     editor->setVisible(!systemMode);
     auto *view=new WheelView;box->addWidget(view);
     if(windowsMode)view->setMinimumSize(360,310);
-    const QFont baseFont=app.font();
-    auto applyUiScale=[&](int percent){
-        const double factor=percent/100.0;
-        QFont scaledFont=baseFont;
-        if(baseFont.pointSizeF()>0)scaledFont.setPointSizeF(baseFont.pointSizeF()*factor);
-        else if(baseFont.pixelSize()>0)scaledFont.setPixelSize(qMax(1,qRound(baseFont.pixelSize()*factor)));
-        app.setFont(scaledFont);
-        view->setMinimumSize(qRound(580*factor),qRound(500*factor));
-        if(windowsMode)view->setMinimumSize(qRound(360*factor),qRound(310*factor));
-        view->updateGeometry();
-        sizeLabel->setText(QString("Window size: %1%").arg(percent));
-        settings.setValue("uiScale",percent);
-        const QSize previousSize=window.size();
-        window.adjustSize();
-        if(windowsMode && window.isVisible() && !pin->isChecked())
-            window.move(window.pos()+QPoint(previousSize.width()-window.width(),previousSize.height()-window.height()));
-    };
-    applyUiScale(sizeSlider->value());
-    QObject::connect(sizeSlider,&QSlider::valueChanged,applyUiScale);
     TouchActivation activation;activation.activate=[=]{view->show();};
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
