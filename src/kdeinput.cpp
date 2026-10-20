@@ -162,3 +162,15 @@ bool KdeInput::key(unsigned symbol){
     uint32_t time=uint32_t(QDateTime::currentMSecsSinceEpoch());
     c.keysym(c.serial,time,symbol,1,0);c.keysym(c.serial,time,symbol,0,0);return true;
 }
+bool KdeInput::navigate(unsigned symbol,bool shift,bool control){
+    if(!active())return false;
+    auto &c=*impl->context;
+    const uint32_t time=uint32_t(QDateTime::currentMSecsSinceEpoch());
+    const auto sendKey=[&](uint32_t key,uint32_t state){c.keysym(c.serial,time,key,state,0);};
+    if(control)sendKey(0xffe3,1); // Control_L
+    if(shift)sendKey(0xffe1,1);   // Shift_L
+    sendKey(symbol,1);sendKey(symbol,0);
+    if(shift)sendKey(0xffe1,0);
+    if(control)sendKey(0xffe3,0);
+    return true;
+}

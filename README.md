@@ -20,9 +20,9 @@ Minimal mode with dragging, and the transparency control.
 | <img src="docs/media/minimal-mode-dragging.gif" alt="Dragging the Daisywheel overlay in Minimal mode" width="420"> | <img src="docs/media/transparency-slider.gif" alt="Adjusting the Daisywheel transparency slider" width="420"> |
 
 **Current status:** controller typing works in other applications on the
-development PCs running Windows and KDE Plasma / Wayland. The v0.4.0 release
-adds a configurable controller shortcut, scroll direction control, unified
-settings, and optional MIDI-synthesized sound feedback.
+development PCs running Windows and KDE Plasma / Wayland. v0.5.0 adds
+controller-only settings navigation, cursor editing, configurable stick
+deadzones, and a compact settings layout.
 Touchscreen devices, broader application compatibility and Steam Deck Gaming
 Mode still need testing.
 
@@ -58,10 +58,10 @@ for trying recent changes; they have not necessarily been manually validated on
 handheld hardware.
 
 For reviewed, persistent downloads, visit [GitHub Releases](https://github.com/Dewopalis/daisywheel-reamade/releases).
-The [v0.4.0 release](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.4.0)
+The [v0.5.0 release](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.5.0)
 includes the Windows installer and portable ZIP, Debian DEB, Fedora RPM, Linux
 AppImage and SHA-256 checksums. Version tags build packages and prepare a draft
-release for review before publication. See the [v0.4.0 release notes](docs/releases/v0.4.0.md)
+release for review before publication. See the [v0.5.0 release notes](docs/releases/v0.5.0.md)
 for changes and validation details.
 
 See [installation and release packaging](docs/releases/packaging.md) for supported
@@ -279,6 +279,8 @@ The shortcut dropdown offers Home/Guide, Back/View and Start/Menu. A chosen shor
 
 The wheel marks L2/L1 and R1/R2 at the top and L3/R3 at the lower sides. A marker lights while its control is held, and a face-button press briefly highlights its matching character. Open **Settings** from the title bar for the **Help** tutorial and window/controller options. Hide, quit, and wheel visibility controls are also in Settings to keep the typing view compact. **Minimal mode (wheel only)** keeps **Settings** and **Show controls** on its compact bar.
 
+With the wheel open, hold **RT** and move the left stick to move the text cursor. Hold **LB** while moving to select text; hold **RB** to move by words, or both to select by words. The wheel shows the configured shortcut and hold progress while you hold it to open Settings, with a confirmation sound at the threshold. In Settings, use D-pad up/down to move between controls, left/right to change the focused value, **A/Start** to activate, **LB/RB** to switch tabs, and **B** to return to the keyboard.
+
 ## Opening and appearance
 
 In KDE mode, automatic opening follows KDE's **Show Virtual Keyboard** policy through KWin's `willShowOnActive` API. The overlay starts hidden and picks up applied policy changes without restarting. Failed policy queries disable automatic opening. Windows uses its saved Daisywheel automatic-opening option described above.
@@ -289,7 +291,8 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | --- | --- |
 | Opacity | In **Settings**; 30–100%, saved between launches |
 | Controller shortcut | In **Settings**; saved between launches |
-| Controller profile | In **Settings**; Handheld disables mouse mode, Living room / desktop enables it, and Custom lets you choose; saved between launches |
+| Controller profile | In **Settings**; new setups default to Living room / desktop, Handheld disables mouse mode, and Custom lets you choose; saved between launches |
+| Stick deadzone | In **Settings**; shared by wheel selection, pointer movement, and cursor editing; adjustable from 5–45% |
 | Enable controller mouse mode | In **Settings**; disabled by Handheld and enabled by Living room / desktop |
 | Pointer speed | In **Settings**; adjustable and saved between launches |
 | Haptic feedback | In **Settings**; optional, strength adjustable, both settings saved between launches |
@@ -369,10 +372,11 @@ kbuildsycoca6 --noincremental
 - [ ] Test sign-in/reboot startup, controller reconnection and multiple displays on target systems.
 - [ ] Broaden compatibility testing across browsers, editors and XWayland applications on Linux, and more applications and controllers on Windows.
 - [ ] Validate compact layout and controller labels on handheld screens and controllers.
-- [ ] Add configurable per-button mappings and stick deadzones.
+- [x] Make in-app Settings controller-navigable, open Settings by holding the configured shortcut, and default new setups to the Living room profile (v0.5.0 work).
+- [x] Add configurable stick deadzones and controller cursor editing with selection and word navigation (v0.5.0 work).
+- [x] Fix compact Settings layout so controller sliders stay within the window (v0.5.0 work).
 - [ ] Add more languages, layouts and controller-specific button labels.
-- [ ] Add a modifier for controller cursor navigation and text selection.
-- [ ] Make settings fully navigable with a controller, including profiles and portal permissions.
+- [ ] Test controller-only interaction with KDE's external portal permission prompts.
 - [ ] Improve mouse-mode recovery from sleep/resume and portal failures without requiring an LT cycle.
 - [ ] Test published packages on handhelds, including Steam Deck Desktop Mode and ROG Ally.
 - [ ] Investigate Steam Deck Gaming Mode separately.
