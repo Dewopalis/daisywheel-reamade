@@ -227,9 +227,10 @@ public:
             p.setBrush(QColor(i==selected?"#253c55":"#1c2636"));p.drawEllipse(c,petalRadius,petalRadius);
             for(int j=0;j<4;++j){
                 QString text=QString(QChar(layout[i][j]));if(upper&&!symbol)text=text.toUpper();
-                if(i==selected&&faceFlashActive&&j==flashedFaceSlot&&SDL_GetTicks()-faceFlashStarted<140){
-                    p.setPen(QPen(QColor("#66d9ef"),2));p.setBrush(QColor(102,217,239,45));
-                    p.drawEllipse(c+offsets[j],11*scale,11*scale);
+                if(i==selected&&faceFlashActive&&j==flashedFaceSlot&&SDL_GetTicks()-faceFlashStarted<180){
+                    QColor feedback=colors[j];feedback.setAlpha(55);
+                    p.setPen(QPen(colors[j],2.5));p.setBrush(feedback);
+                    p.drawEllipse(c+offsets[j],17*scale,17*scale);
                 }
                 p.setPen(colors[j]);p.drawText(QRectF(c+offsets[j]-QPointF(14*scale,14*scale),QSizeF(28*scale,28*scale)),Qt::AlignCenter,text);
             }
@@ -245,19 +246,23 @@ public:
         };
         const Uint32 now=SDL_GetTicks();
         auto lit=[now](bool down,Uint32 until){return down||(until&&Sint32(until-now)>0);};
-        const qreal side=12, shoulderWidth=34, shoulderHeight=23, gap=5;
+        const qreal controlScale=qBound(0.65,qreal(std::min(width(),height()))/420.0,1.35);
+        const qreal side=std::min(width(),height())<320?4:12*controlScale;
+        const qreal shoulderWidth=48*controlScale,shoulderHeight=31*controlScale,gap=11*controlScale;
         drawShoulder(QRectF(side,side,shoulderWidth,shoulderHeight),"L2",lit(l2Down,l2FlashUntil));
         drawShoulder(QRectF(side,side+shoulderHeight+gap,shoulderWidth,shoulderHeight),"L1",lit(l1Down,l1FlashUntil));
         drawShoulder(QRectF(width()-side-shoulderWidth,side,shoulderWidth,shoulderHeight),"R1",lit(r1Down,r1FlashUntil));
         drawShoulder(QRectF(width()-side-shoulderWidth,side+shoulderHeight+gap,shoulderWidth,shoulderHeight),"R2",lit(r2Down,r2FlashUntil));
         auto drawStick=[&](const QPointF &c,const QString &label,bool down){
+            const qreal radius=22*controlScale;
             p.setPen(QPen(down?QColor("#9cecff"):QColor("#536075"),down?2:1));
-            p.setBrush(down?QColor("#66d9ef"):QColor("#202b3b"));p.drawEllipse(c,16,16);
+            p.setBrush(down?QColor("#66d9ef"):QColor("#202b3b"));p.drawEllipse(c,radius,radius);
             p.setPen(down?QColor("#101827"):QColor("#aab7ca"));
-            p.drawText(QRectF(c-QPointF(16,16),QSizeF(32,32)),Qt::AlignCenter,label);
+            p.drawText(QRectF(c-QPointF(radius,radius),QSizeF(radius*2,radius*2)),Qt::AlignCenter,label);
         };
-        drawStick(QPointF(side+16,height()-side-16),"L3",lit(l3Down,l3FlashUntil));
-        drawStick(QPointF(width()-side-16,height()-side-16),"R3",lit(r3Down,r3FlashUntil));
+        const qreal stickRadius=22*controlScale;
+        drawStick(QPointF(side+stickRadius,height()-side-stickRadius),"L3",lit(l3Down,l3FlashUntil));
+        drawStick(QPointF(width()-side-stickRadius,height()-side-stickRadius),"R3",lit(r3Down,r3FlashUntil));
     }
 private:
     int flashedFaceSlot=-1;
