@@ -8,5 +8,5 @@ fi
 export LD_LIBRARY_PATH="$appdir/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export QT_PLUGIN_PATH="$appdir/usr/plugins"
 export QT_QPA_PLATFORM=${QT_QPA_PLATFORM:-wayland}
-if [[ $# == 0 ]]; then set -- --kde-input-method; fi
+if [[ $# == 0 ]]; then set -- --install-appimage --kde-input-method; fi
 exec "$appdir/usr/bin/daisywheel" "$@"
