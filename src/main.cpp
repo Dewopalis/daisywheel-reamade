@@ -8,6 +8,10 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
+#include <QGroupBox>
 #include <QTimer>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -292,16 +296,33 @@ int main(int argc,char **argv){
     const int fullContentSpacing=box->spacing();
     QList<QWidget*> fullModeWidgets;
     auto addControl=[&](QWidget *control){box->addWidget(control);fullModeWidgets.append(control);return control;};
+    auto *settingsDialog=new QDialog(&window);
+    settingsDialog->setWindowTitle("Daisywheel settings");
+    settingsDialog->setWindowFlag(Qt::WindowStaysOnTopHint,true);
+    settingsDialog->setMinimumWidth(380);
+    auto *settingsLayout=new QVBoxLayout(settingsDialog);
+    auto *windowSettingsGroup=new QGroupBox("Window");
+    auto *windowSettingsLayout=new QFormLayout(windowSettingsGroup);
+    auto *controllerSettingsGroup=new QGroupBox("Controller");
+    auto *controllerSettingsLayout=new QFormLayout(controllerSettingsGroup);
+    settingsLayout->addWidget(windowSettingsGroup);
+    settingsLayout->addWidget(controllerSettingsGroup);
+    auto *settingsButtons=new QDialogButtonBox(QDialogButtonBox::Close);
+    QObject::connect(settingsButtons,&QDialogButtonBox::rejected,settingsDialog,&QDialog::hide);
+    settingsLayout->addWidget(settingsButtons);
+    auto showSettings=[settingsDialog]{settingsDialog->show();settingsDialog->raise();settingsDialog->activateWindow();};
     auto *headerWidget=new QWidget(content);
     auto *header=new QHBoxLayout(headerWidget);
     auto *resizeHandle=new ResizeHandle(kdeMode);
     header->addWidget(resizeHandle);
     auto *handle=new MoveHandle("Daisywheel · drag here to move");header->addWidget(handle,1);
+    auto *settingsButton=new QPushButton("Settings");settingsButton->setFixedHeight(26);
+    header->addWidget(settingsButton);QObject::connect(settingsButton,&QPushButton::clicked,showSettings);
     addControl(headerWidget);
     auto *pin=new QCheckBox("Pin position (lock dragging)");
-    pin->setChecked(settings.value("pinned",false).toBool());handle->pinned=pin->isChecked();addControl(pin);
+    pin->setChecked(settings.value("pinned",false).toBool());handle->pinned=pin->isChecked();windowSettingsLayout->addRow(pin);
     auto *minimalMode=new QCheckBox("Minimal mode (wheel only)");
-    minimalMode->setChecked(settings.value("minimalMode",false).toBool());addControl(minimalMode);
+    minimalMode->setChecked(settings.value("minimalMode",false).toBool());windowSettingsLayout->addRow(minimalMode);
     bool minimalActive=minimalMode->isChecked();
     std::optional<QPoint> pinnedPosition;
     if(windowsMode && settings.contains("windowsPinnedPosition"))
@@ -318,15 +339,14 @@ int main(int argc,char **argv){
             pinnedPosition=window.pos();settings.setValue("windowsPinnedPosition",*pinnedPosition);
         }
     });
-    auto *opacityLabel=new QLabel;addControl(opacityLabel);
+    auto *opacityLabel=new QLabel;
     auto *opacity=new QSlider(Qt::Horizontal);opacity->setRange(30,100);
-    opacity->setValue(settings.value("opacity",100).toInt());addControl(opacity);
+    opacity->setValue(settings.value("opacity",100).toInt());windowSettingsLayout->addRow(opacityLabel,opacity);
     // Alpha composition works for the content on Wayland without relying on
     // compositor support for QWidget::setWindowOpacity.
     auto *alpha=new QGraphicsOpacityEffect(content);content->setGraphicsEffect(alpha);
     auto setOpacity=[&](int value){alpha->setOpacity(value/100.0);opacityLabel->setText(QString("Opacity: %1%").arg(value));settings.setValue("opacity",value);};
     setOpacity(opacity->value());QObject::connect(opacity,&QSlider::valueChanged,setOpacity);
-    addControl(new QLabel("Controller profile"));
     auto *controllerProfile=new QComboBox;
     controllerProfile->addItem("Handheld", "handheld");
     controllerProfile->addItem("Living room / desktop", "living-room");
@@ -334,18 +354,18 @@ int main(int argc,char **argv){
     QString savedProfile=settings.value("controllerProfile","handheld").toString();
     int savedProfileIndex=controllerProfile->findData(savedProfile);
     controllerProfile->setCurrentIndex(savedProfileIndex<0?0:savedProfileIndex);
-    addControl(controllerProfile);
+    controllerSettingsLayout->addRow("Profile",controllerProfile);
     auto *mouseModeEnabled=new QCheckBox("Enable controller mouse mode");
     mouseModeEnabled->setChecked(settings.value("controllerMouseEnabled",savedProfile=="living-room").toBool());
-    addControl(mouseModeEnabled);
-    auto *pointerSpeedLabel=new QLabel;addControl(pointerSpeedLabel);
+    controllerSettingsLayout->addRow(mouseModeEnabled);
+    auto *pointerSpeedLabel=new QLabel;
     auto *pointerSpeed=new QSlider(Qt::Horizontal);pointerSpeed->setRange(250,1800);
-    pointerSpeed->setValue(settings.value("pointerSpeed",950).toInt());addControl(pointerSpeed);
+    pointerSpeed->setValue(settings.value("pointerSpeed",950).toInt());controllerSettingsLayout->addRow(pointerSpeedLabel,pointerSpeed);
     auto *hapticsEnabled=new QCheckBox("Enable haptic feedback");
-    hapticsEnabled->setChecked(settings.value("hapticsEnabled",false).toBool());addControl(hapticsEnabled);
-    auto *hapticsStrengthLabel=new QLabel;addControl(hapticsStrengthLabel);
+    hapticsEnabled->setChecked(settings.value("hapticsEnabled",false).toBool());controllerSettingsLayout->addRow(hapticsEnabled);
+    auto *hapticsStrengthLabel=new QLabel;
     auto *hapticsStrength=new QSlider(Qt::Horizontal);hapticsStrength->setRange(10,100);
-    hapticsStrength->setValue(settings.value("hapticsStrength",50).toInt());addControl(hapticsStrength);
+    hapticsStrength->setValue(settings.value("hapticsStrength",50).toInt());controllerSettingsLayout->addRow(hapticsStrengthLabel,hapticsStrength);
     hapticsStrengthLabel->setText(QString("Haptic strength: %1%").arg(hapticsStrength->value()));
     controllerProfile->setVisible(systemMode);mouseModeEnabled->setVisible(systemMode);
     pointerSpeedLabel->setVisible(systemMode);pointerSpeed->setVisible(systemMode);
@@ -390,13 +410,12 @@ int main(int argc,char **argv){
     };
     setPointerSpeed(pointerSpeed->value());
     QObject::connect(pointerSpeed,&QSlider::valueChanged,setPointerSpeed);
-    addControl(new QLabel("Controller shortcut (works while running in background)"));
     auto *shortcut=new QComboBox;
     shortcut->addItem("Home / Guide",SDL_CONTROLLER_BUTTON_GUIDE);
     shortcut->addItem("Back / View",SDL_CONTROLLER_BUTTON_BACK);
     shortcut->addItem("Start / Menu",SDL_CONTROLLER_BUTTON_START);
     int shortcutIndex=shortcut->findData(settings.value("shortcut",SDL_CONTROLLER_BUTTON_GUIDE));
-    shortcut->setCurrentIndex(shortcutIndex<0?0:shortcutIndex);addControl(shortcut);
+    shortcut->setCurrentIndex(shortcutIndex<0?0:shortcutIndex);controllerSettingsLayout->addRow("Controller shortcut",shortcut);
     QObject::connect(shortcut,&QComboBox::currentIndexChanged,[&](int){settings.setValue("shortcut",shortcut->currentData());});
     auto *status=new QLabel;addControl(status);
 #ifdef DAISYWHEEL_KDE
@@ -424,6 +443,12 @@ int main(int argc,char **argv){
     minimalMoveHandle->setCursor(Qt::SizeAllCursor);
     minimalBarLayout->addWidget(minimalMoveHandle);
     minimalBarLayout->addStretch();
+    auto *minimalSettingsButton=new QPushButton("Settings",minimalBar);
+    minimalSettingsButton->setToolTip("Open Daisywheel settings");
+    minimalSettingsButton->setAccessibleName("Open Daisywheel settings");
+    minimalSettingsButton->setFixedSize(68,26);
+    minimalBarLayout->addWidget(minimalSettingsButton);
+    QObject::connect(minimalSettingsButton,&QPushButton::clicked,showSettings);
     auto *restoreControls=new QPushButton("Show controls",minimalBar);
     restoreControls->setToolTip("Show full controls");
     restoreControls->setAccessibleName("Show full controls");
@@ -440,7 +465,7 @@ int main(int argc,char **argv){
     addControl(new QLabel("Left stick: petal · Face buttons: character · LB: shift · RB: symbols\n"
                              "When mouse mode is enabled, hold LT: right stick pointer · A/B click · X/Y scroll\n"
                              "Left stick click: space · Right stick click/hold: backspace · Start: enter · Back: hide\n"
-                             "Tap ≡ or hold the selected controller shortcut to restore controls from Minimal mode"));
+                             "Open Settings to customize Daisywheel · Tap ≡ or hold the selected shortcut to restore controls"));
     auto *toggle=new QPushButton("Show / hide wheel");addControl(toggle);
     QObject::connect(toggle,&QPushButton::clicked,[=]{view->setVisible(!view->isVisible());});
     auto *hide=new QPushButton("Hide window · controller shortcut to reopen");addControl(hide);

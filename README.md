@@ -275,7 +275,7 @@ Characters sit at the physical south/east/west/north face-button positions. SDL 
 
 The shortcut dropdown offers Home/Guide, Back/View and Start/Menu. A chosen shortcut takes precedence over that button's typing action. Steam or desktop bindings may also respond to Guide; select another shortcut if needed. Daisywheel does not suppress those other bindings.
 
-Enable **Minimal mode (wheel only)** to hide the settings and help panel and shrink the window for handheld screens. A small **≡** button in the upper-right restores the full controls. You can also hold the selected controller shortcut for about a second while the wheel is visible.
+Open **Settings** from the title bar to adjust the window and controller options without adding those controls to the keyboard window. **Minimal mode (wheel only)** shrinks the keyboard for handheld screens; its compact bar keeps both **Settings** and **Show controls** available. You can also hold the selected controller shortcut for about a second to restore the full controls.
 
 ## Opening and appearance
 
@@ -285,15 +285,15 @@ Controller opening works regardless of the automatic policy and keeps the overla
 
 | Setting | Current behavior |
 | --- | --- |
-| Opacity | 30–100%, affects panel and characters together; saved between launches |
-| Controller shortcut | Saved between launches |
-| Controller profile | Handheld, Living room / desktop, or Custom; saved between launches |
-| Enable controller mouse mode | Disabled by the Handheld preset; the Living room / desktop preset enables it |
-| Pointer speed | Adjustable and saved between launches |
-| Haptic feedback | Optional; strength is adjustable and both settings are saved between launches |
-| Minimal mode | Shows the wheel at a compact size; use the upper-right **≡** button or hold the selected controller shortcut to restore the controls |
+| Opacity | In **Settings**; 30–100%, saved between launches |
+| Controller shortcut | In **Settings**; saved between launches |
+| Controller profile | In **Settings**; Handheld, Living room / desktop, or Custom; saved between launches |
+| Enable controller mouse mode | In **Settings**; disabled by Handheld and enabled by Living room / desktop |
+| Pointer speed | In **Settings**; adjustable and saved between launches |
+| Haptic feedback | In **Settings**; optional, strength adjustable, both settings saved between launches |
+| Minimal mode | In **Settings**; the compact bar keeps Settings available and **Show controls** restores the full controls |
 | KDE system-mode position | Drag the header or corner to see a translucent window outline preview; position and size apply and save on release |
-| Drag handle / pin toggle | Drag the header to move and enable **Pin position** to lock it |
+| Drag handle / pin toggle | In **Settings**, enable **Pin position** to lock dragging; otherwise drag the header to move |
 | Hide window | Keeps controller handling running |
 | Quit | Stops the process; controller reopening requires relaunch |
 
