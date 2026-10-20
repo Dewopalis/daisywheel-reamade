@@ -301,13 +301,16 @@ KWin's `VirtualKeyboard.visible` property describes its native input panel, not 
 
 Haptic feedback pulses when the controller moves between petals, types a
 character, or deletes text. It uses controller rumble support and is disabled
-by default.
+by default. Strength scales up to the controller's full rumble level; longer
+pulses make typing and deletion feedback easier to feel. Daisywheel reports
+when a connected controller does not support rumble.
 
 Controller mouse mode works in Windows and KDE system mode. On KDE, Daisywheel
-asks the desktop's RemoteDesktop portal for pointer permission the first time
-you hold LT; grant pointer access in the prompt. The portal may remember that
-permission across restarts. When mouse mode is active, the overlay is made
-click-through so mouse clicks reach the application underneath it.
+asks the desktop's RemoteDesktop portal for pointer permission when you enable
+the option in Settings; grant pointer access in the prompt. The portal may
+remember that permission across restarts. Hold LT and move the left stick to
+move the pointer. When mouse mode is active, the overlay is made click-through
+so mouse clicks reach the application underneath it.
 This follows the common handheld layout: the left stick moves the pointer, R1
 clicks, and the right trigger (R2) right-clicks while LT is held.
 

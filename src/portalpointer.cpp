@@ -163,7 +163,15 @@ void PortalPointer::move(double dx,double dy){
     QDBusMessage call=QDBusMessage::createMethodCall(
         portalService,sessionHandle,remoteDesktopInterface,"NotifyPointerMotion");
     call.setArguments({QVariantMap{},dx,dy});
-    QDBusConnection::sessionBus().asyncCall(call);
+    auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call),this);
+    connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher]{
+        QDBusPendingReply<> reply=*watcher;
+        if(reply.isError()&&isActive){
+            isActive=false;
+            setStatus(QString("KDE rejected pointer movement: %1").arg(reply.error().message()));
+        }
+        watcher->deleteLater();
+    });
 }
 
 void PortalPointer::button(bool left,bool pressed){

@@ -355,7 +355,7 @@ int main(int argc,char **argv){
     int savedProfileIndex=controllerProfile->findData(savedProfile);
     controllerProfile->setCurrentIndex(savedProfileIndex<0?0:savedProfileIndex);
     controllerSettingsLayout->addRow("Profile",controllerProfile);
-    auto *mouseModeEnabled=new QCheckBox("Enable controller mouse mode");
+    auto *mouseModeEnabled=new QCheckBox("Enable controller mouse mode (hold LT)");
     mouseModeEnabled->setChecked(settings.value("controllerMouseEnabled",savedProfile=="living-room").toBool());
     controllerSettingsLayout->addRow(mouseModeEnabled);
     auto *pointerSpeedLabel=new QLabel;
@@ -392,6 +392,9 @@ int main(int argc,char **argv){
         settings.setValue("controllerMouseEnabled",enabled);
         pointerSpeed->setEnabled(enabled);
         setCustomProfile();
+#ifdef DAISYWHEEL_KDE
+        if(enabled&&kdeMode&&portalPointer)portalPointer->requestAccess();
+#endif
     });
     QObject::connect(hapticsEnabled,&QCheckBox::toggled,[&](bool enabled){
         settings.setValue("hapticsEnabled",enabled);
@@ -516,26 +519,26 @@ int main(int argc,char **argv){
     std::function<void(Uint32)> haptic;
     auto sendText=[&](const QString &text){
 #ifdef Q_OS_WIN
-        if(windowsMode){windowsInput.commit(text);if(haptic)haptic(24);return;}
+        if(windowsMode){windowsInput.commit(text);if(haptic)haptic(55);return;}
 #endif
 #ifdef DAISYWHEEL_KDE
         if(kde){
             if(!kde->commit(text))status->setText("No active text field — focus a text field in another app");
-            else if(haptic)haptic(24);
+            else if(haptic)haptic(55);
             return;
         }
 #endif
         editor->insertPlainText(text);
-        if(haptic)haptic(24);
+        if(haptic)haptic(55);
     };
     auto sendControl=[&](bool backspace){
 #ifdef Q_OS_WIN
-        if(windowsMode){windowsInput.key(backspace);if(backspace&&haptic)haptic(16);return;}
+        if(windowsMode){windowsInput.key(backspace);if(backspace&&haptic)haptic(40);return;}
 #endif
 #ifdef DAISYWHEEL_KDE
-        if(kde){kde->key(backspace?0xff08:0xff0d);if(backspace&&haptic)haptic(16);return;}
+        if(kde){kde->key(backspace?0xff08:0xff0d);if(backspace&&haptic)haptic(40);return;}
 #endif
-        if(backspace){auto cursor=editor->textCursor();cursor.deletePreviousChar();editor->setTextCursor(cursor);if(haptic)haptic(16);}
+        if(backspace){auto cursor=editor->textCursor();cursor.deletePreviousChar();editor->setTextCursor(cursor);if(haptic)haptic(40);}
         else editor->insertPlainText("\n");
     };
     auto pointerMove=[&](int dx,int dy){
@@ -569,10 +572,14 @@ int main(int argc,char **argv){
         QString text(QChar::fromLatin1(ch));if(view->upper&&!view->symbol)text=text.toUpper();sendText(text);
     };
     SDL_GameController *controller=nullptr;
+    bool controllerRumbleAvailable=true;
     haptic=[&](Uint32 duration){
         if(!systemMode||!controller||!hapticsEnabled->isChecked())return;
-        const Uint16 strength=static_cast<Uint16>(hapticsStrength->value()*655);
-        SDL_GameControllerRumble(controller,strength,strength,duration);
+        const int percent=hapticsStrength->value();
+        const Uint16 strength=static_cast<Uint16>((percent*65535+50)/100);
+        controllerRumbleAvailable=SDL_GameControllerHasRumble(controller)==SDL_TRUE;
+        if(controllerRumbleAvailable&&SDL_GameControllerRumble(controller,strength,strength,duration)<0)
+            controllerRumbleAvailable=false;
     };
     QTimer timer;
     QTimer backspaceRepeatTimer;
@@ -599,7 +606,10 @@ int main(int argc,char **argv){
     QObject::connect(&timer,&QTimer::timeout,[&]{
         if(sdlOk){SDL_Event event;
             while(SDL_PollEvent(&event)){
-                if(event.type==SDL_CONTROLLERDEVICEADDED&&!controller)controller=SDL_GameControllerOpen(event.cdevice.which);
+                if(event.type==SDL_CONTROLLERDEVICEADDED&&!controller){
+                    controller=SDL_GameControllerOpen(event.cdevice.which);
+                    controllerRumbleAvailable=controller&&SDL_GameControllerHasRumble(controller)==SDL_TRUE;
+                }
                 if(event.type==SDL_CONTROLLERDEVICEREMOVED&&controller&&event.cdevice.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))){
                     for(Uint8 button:heldPointerButtons)pointerButton(button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,false);
                     heldPointerButtons.clear();
@@ -610,7 +620,7 @@ int main(int argc,char **argv){
 #ifdef DAISYWHEEL_KDE
                     if(kde&&window.windowHandle())window.windowHandle()->setFlag(Qt::WindowTransparentForInput,false);
 #endif
-                    SDL_GameControllerClose(controller);controller=nullptr;view->selected=-1;shortcutButtonDown=false;backspaceHeld=false;backspaceRepeatTimer.stop();backspaceRepeatTimer.setSingleShot(true);pointerMode=false;
+                    SDL_GameControllerClose(controller);controller=nullptr;controllerRumbleAvailable=true;view->selected=-1;shortcutButtonDown=false;backspaceHeld=false;backspaceRepeatTimer.stop();backspaceRepeatTimer.setSingleShot(true);pointerMode=false;
                 }
                 if(event.type==SDL_CONTROLLERBUTTONUP&&controller&&event.cbutton.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))){
                     if(event.cbutton.button==SDL_CONTROLLER_BUTTON_RIGHTSTICK){
@@ -729,10 +739,12 @@ int main(int argc,char **argv){
         if(controller&&!pointerMode){
             const int previousSelection=view->selected;
             view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
-            if(view->selected>=0&&view->selected!=previousSelection&&haptic)haptic(8);
+            if(view->selected>=0&&view->selected!=previousSelection&&haptic)haptic(18);
         }
         QString statusText=controller?QString("Connected: %1").arg(SDL_GameControllerName(controller)):sdlOk?"Connect a controller":"Controller initialization failed";
         if(pointerMode)statusText+=" · Mouse mode";
+        if(systemMode&&controller&&hapticsEnabled->isChecked()&&!controllerRumbleAvailable)
+            statusText+=" · Controller rumble unavailable";
 #ifdef DAISYWHEEL_KDE
         if(portalPointer&&!portalPointer->status().isEmpty())statusText+=" · "+portalPointer->status();
 #endif
