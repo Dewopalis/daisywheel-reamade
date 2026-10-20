@@ -417,7 +417,10 @@ int main(int argc,char **argv){
     int shortcutIndex=shortcut->findData(settings.value("shortcut",SDL_CONTROLLER_BUTTON_GUIDE));
     shortcut->setCurrentIndex(shortcutIndex<0?0:shortcutIndex);controllerSettingsLayout->addRow("Controller shortcut",shortcut);
     QObject::connect(shortcut,&QComboBox::currentIndexChanged,[&](int){settings.setValue("shortcut",shortcut->currentData());});
-    auto *status=new QLabel;addControl(status);
+    auto *status=new QLabel;
+    status->setWordWrap(true);
+    status->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Minimum);
+    addControl(status);
 #ifdef DAISYWHEEL_KDE
     if(portalPointer){
         portalPointer->statusChanged=[&](const QString &message){status->setText(message);};
@@ -462,10 +465,13 @@ int main(int argc,char **argv){
     TouchActivation activation;activation.activate=[=]{view->show();};
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
-    addControl(new QLabel("Left stick: petal · Face buttons: character · LB: shift · RB: symbols\n"
-                             "When mouse mode is enabled, hold LT: left stick pointer · R1/R2 click · X/Y scroll\n"
-                             "Left stick click: space · Right stick click/hold: backspace · Start: enter · Back: hide\n"
-                             "Open Settings to customize Daisywheel · Tap ≡ or hold the selected shortcut to restore controls"));
+    auto *help=new QLabel("Left stick: petal · Face buttons: character · LB: shift · RB: symbols\n"
+                          "When mouse mode is enabled, hold LT: left stick pointer · R1/R2 click · X/Y scroll\n"
+                          "Left stick click: space · Right stick click/hold: backspace · Start: enter · Back: hide\n"
+                          "Open Settings to customize Daisywheel · Tap ≡ or hold the selected shortcut to restore controls");
+    help->setWordWrap(true);
+    help->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Minimum);
+    addControl(help);
     auto *toggle=new QPushButton("Show / hide wheel");addControl(toggle);
     QObject::connect(toggle,&QPushButton::clicked,[=]{view->setVisible(!view->isVisible());});
     auto *hide=new QPushButton("Hide window · controller shortcut to reopen");addControl(hide);
@@ -726,7 +732,7 @@ int main(int argc,char **argv){
             if(view->selected>=0&&view->selected!=previousSelection&&haptic)haptic(8);
         }
         QString statusText=controller?QString("Connected: %1").arg(SDL_GameControllerName(controller)):sdlOk?"Connect a controller":"Controller initialization failed";
-        if(pointerMode)statusText+=" · Mouse mode: LS move, R1/R2 click, X/Y scroll";
+        if(pointerMode)statusText+=" · Mouse mode";
 #ifdef DAISYWHEEL_KDE
         if(portalPointer&&!portalPointer->status().isEmpty())statusText+=" · "+portalPointer->status();
 #endif
