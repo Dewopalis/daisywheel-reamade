@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Daisywheel VERSION 0.1.0 LANGUAGES C CXX)
+project(Daisywheel VERSION 0.2.0 LANGUAGES C CXX)
 include(GNUInstallDirs)
 set(CMAKE_CXX_STANDARD 17)
 find_package(Qt6 6.8 REQUIRED COMPONENTS Widgets)

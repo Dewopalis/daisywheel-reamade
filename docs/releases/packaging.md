@@ -16,11 +16,11 @@ artifacts. They expire after 14 days. For stable downloads, use
 [GitHub Releases](https://github.com/Dewopalis/daisywheel-reamade/releases):
 tagged builds create drafts, which maintainers test before publishing.
 
-The first release, [v0.1.0](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.1.0),
-is published. Its workflow passed the Windows, DEB/AppImage and RPM jobs. CI
-installed the DEB and RPM packages and checked startup, verified the extracted
-AppImage, and smoke-tested the staged Windows package. Testing across more
-target devices and applications remains ongoing.
+Version [v0.2.0](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.2.0)
+is the current release. Its workflow passed the Windows, DEB/AppImage and RPM
+jobs. CI installed the DEB and RPM packages and checked startup, verified the
+extracted AppImage, and smoke-tested the staged Windows package. Testing across
+more target devices and applications remains ongoing.
 
 ## Downloads produced
 
@@ -34,7 +34,7 @@ target devices and applications remains ongoing.
 
 AppImage is the intended download for current CachyOS/Arch users. It does not
 make system-input support available on other desktops or Steam Deck Gaming Mode.
-The hosted v0.1.0 package workflow passes its CI installation and startup checks;
+The hosted v0.2.0 package workflow passes its CI installation and startup checks;
 manual testing on target systems is still needed before promising broader device
 or application compatibility. Windows and Linux packages are currently unsigned.
 
@@ -51,8 +51,8 @@ or application compatibility. Windows and Linux packages are currently unsigned.
    git push origin v0.1.1
    ```
 
-   Replace `v0.1.1` with the release version set in `CMakeLists.txt`. The first
-   release, `v0.1.0`, is already tagged. Prerelease suffixes are not supported.
+   Replace `v0.2.1` with the release version set in `CMakeLists.txt`. The
+   `v0.2.0` release is already tagged. Prerelease suffixes are not supported.
 4. Wait for Windows, DEB/AppImage and RPM jobs to succeed. The tag must match
    the CMake version.
 5. Open the draft under GitHub Releases. Download and test the actual installer,
@@ -85,27 +85,14 @@ Keyboard settings and Apply. Do not add a second autostart entry. An old user-lo
 desktop entry from the source-install instructions can shadow the packaged one;
 remove or update it before selecting the package's keyboard.
 
-**CachyOS / Arch AppImage:** the published v0.1.0 AppImage uses manual
-registration. Download it, make it executable, then run the two commands below.
-Recent development builds include a guided first-launch installer; that flow
-will be included in a future published release. When available, it will copy
-the AppImage to a stable location and register it with KDE without changing your
-preferred keyboard. You must still select Daisywheel REAmade in **System
-Settings → Keyboard → Virtual Keyboard** and click **Apply**; the installer can
-open that settings page for you.
-
-For v0.1.0, place the file at a stable path, make it executable, and register
-it with KDE:
-
-```bash
-chmod +x daisywheel-reamade-0.1.0-linux-x86_64.AppImage
-./daisywheel-reamade-0.1.0-linux-x86_64.AppImage --install-desktop-entry
-```
-
-Manual registration needs Python 3 and KDE's `kbuildsycoca6`. It records the
-exact AppImage path; moving the file requires registering the new path. Qt's
-Wayland and layer-shell plugins are explicitly bundled because they are loaded
-dynamically.
+**CachyOS / Arch AppImage:** open the downloaded AppImage. If it will not open,
+right-click it, choose **Properties → Permissions**, and enable **Is executable**.
+On first launch, choose **Install for this user**. The installer copies it to a
+stable location and registers it with KDE without changing your preferred
+keyboard. To finish, select Daisywheel REAmade in **System Settings → Keyboard →
+Virtual Keyboard** and click **Apply**. The installer offers to open that
+settings page for you. Reinstalling a newer AppImage from its download location
+replaces the installed copy and updates the KDE registration.
 
 If the system lacks AppImage FUSE support, set `APPIMAGE_EXTRACT_AND_RUN=1` for
 one-off runs. For KWin startup on those systems, extract to a stable directory and
@@ -123,7 +110,7 @@ ctest --test-dir build-ci --output-on-failure
 DESTDIR="$PWD/work/staging" cmake --install build-ci
 cpack --config build-ci/CPackConfig.cmake -G DEB -B dist  # Debian build host
 cpack --config build-ci/CPackConfig.cmake -G RPM -B dist  # Fedora build host
-bash scripts/package-appimage.sh 0.1.0 build-ci
+bash scripts/package-appimage.sh 0.2.0 build-ci
 ```
 
 Native packages must be built in their corresponding distro environment;

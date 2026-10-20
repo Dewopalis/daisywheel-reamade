@@ -20,9 +20,9 @@ Minimal mode with dragging, and the transparency control.
 | <img src="docs/media/minimal-mode-dragging.gif" alt="Dragging the Daisywheel overlay in Minimal mode" width="420"> | <img src="docs/media/transparency-slider.gif" alt="Adjusting the Daisywheel transparency slider" width="420"> |
 
 **Current status:** controller typing works in other applications on the
-development PCs running Windows and KDE Plasma / Wayland. Version [v0.1.0](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.1.0)
-is published. Touchscreen devices, broader application compatibility and Steam
-Deck Gaming Mode still need testing.
+development PCs running Windows and KDE Plasma / Wayland. The v0.2.0 release
+adds a guided first-launch installer for the Linux AppImage. Touchscreen devices,
+broader application compatibility and Steam Deck Gaming Mode still need testing.
 
 ## Open source and contributing
 
@@ -56,10 +56,9 @@ for trying recent changes; they have not necessarily been manually validated on
 handheld hardware.
 
 For reviewed, persistent downloads, visit [GitHub Releases](https://github.com/Dewopalis/daisywheel-reamade/releases).
-The first release, [v0.1.0](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.1.0),
-is published with the Windows installer and portable ZIP, Debian DEB, Fedora
-RPM, Linux AppImage and SHA-256 checksums. Future version tags build packages
-and prepare a draft release for review before publication.
+The v0.2.0 release includes the Windows installer and portable ZIP, Debian DEB,
+Fedora RPM, Linux AppImage and SHA-256 checksums. Future version tags build
+packages and prepare a draft release for review before publication.
 
 See [installation and release packaging](docs/releases/packaging.md) for supported
 platform baselines and release details.
@@ -69,11 +68,10 @@ platform baselines and release details.
 - **Windows:** run the setup `.exe` and follow the installer.
 - **Debian-based KDE:** open the downloaded `.deb` with **Discover** and choose
   **Install**. Fedora KDE users can do the same with the `.rpm`.
-- **CachyOS / Arch KDE:** the published v0.1.0 AppImage still needs the manual
-  registration steps in the [installation guide](docs/releases/packaging.md#install-downloaded-packages).
-  Recent development builds include a guided first-launch installer; it will
-  be available in a future published release. If an AppImage will not open,
-  right-click it, choose **Properties → Permissions**, and enable **Is executable**.
+- **CachyOS / Arch KDE:** open the downloaded `.AppImage`. On first launch,
+  choose **Install for this user**. It copies itself to a stable location and
+  registers Daisywheel with KDE. If it will not open, right-click it, choose
+  **Properties → Permissions**, and enable **Is executable**.
 
 After installing on KDE, open **System Settings → Keyboard → Virtual Keyboard**,
 select **Daisywheel REAmade**, and click **Apply**. KDE requires this last choice;
@@ -331,7 +329,7 @@ kbuildsycoca6 --noincremental
 - [x] KDE Virtual Keyboard integration, including KDE-controlled automatic opening.
 - [x] Windows UI Automation text-field detection and optional sign-in startup.
 - [x] Move, pin and resize the overlay; Minimal mode and adjustable transparency.
-- [x] Build and publish v0.1.0 packages for Windows and Linux; CI checks packages and prepares draft releases for future tags.
+- [x] Build and publish v0.2.0 packages for Windows and Linux, including the guided Linux AppImage installer.
 - [ ] Validate touch/tablet opening and KDE keyboard policies on supported hardware.
 - [ ] Test sign-in/reboot startup, controller reconnection and multiple displays on target systems.
 - [ ] Broaden compatibility testing across browsers, editors and XWayland applications on Linux, and more applications and controllers on Windows.
