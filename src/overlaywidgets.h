@@ -172,6 +172,11 @@ public:
         (left?l2FlashUntil:r2FlashUntil)=SDL_GetTicks()+150;
         update();
     }
+    void setShortcutHint(const QString &hint) {
+        if(shortcutHint==hint)return;
+        shortcutHint=hint;
+        update();
+    }
     void paintEvent(QPaintEvent*) override {
         QPainter p(this); p.setRenderHint(QPainter::Antialiasing);
         p.fillRect(rect(), QColor("#111827"));
@@ -203,6 +208,11 @@ public:
         p.setPen(QColor("#dce6f5"));
         p.drawText(QRectF(center-QPointF(67,40),QSizeF(134,80)),Qt::AlignCenter,
                    symbol?"Symbols":upper?"ABC":"abc");
+        if(!shortcutHint.isEmpty()){
+            QFont hintFont=p.font();hintFont.setPixelSize(qMax(8,qRound(10*scale)));p.setFont(hintFont);
+            p.setPen(QColor("#9aa8bd"));
+            p.drawText(QRectF(center-QPointF(88,-28),QSizeF(176,20)),Qt::AlignCenter,shortcutHint);
+        }
         auto drawShoulder=[&](const QRectF &r,const QString &label,bool down){
             p.setPen(QPen(down?QColor("#9cecff"):QColor("#536075"),down?2:1));
             p.setBrush(down?QColor("#66d9ef"):QColor("#202b3b"));p.drawRoundedRect(r,5,5);
@@ -234,5 +244,6 @@ private:
     Uint32 faceFlashStarted=0;
     Uint32 l1FlashUntil=0,l2FlashUntil=0,r1FlashUntil=0,r2FlashUntil=0,l3FlashUntil=0,r3FlashUntil=0;
     bool faceFlashActive=false;
+    QString shortcutHint;
 };
 

@@ -279,7 +279,7 @@ The shortcut dropdown offers Home/Guide, Back/View and Start/Menu. A chosen shor
 
 The wheel marks L2/L1 and R1/R2 at the top and L3/R3 at the lower sides. A marker lights while its control is held, and a face-button press briefly highlights its matching character. Open **Settings** from the title bar for the **Help** tutorial and window/controller options. Hide, quit, and wheel visibility controls are also in Settings to keep the typing view compact. **Minimal mode (wheel only)** keeps **Settings** and **Show controls** on its compact bar.
 
-With the wheel open, hold **RT** and move the left stick to move the text cursor. Hold **LB** while moving to select text; hold **RB** to move by words, or both to select by words. Hold the configured show/hide shortcut to open Settings using only the controller. In Settings, use D-pad up/down to move between controls, left/right to change the focused value, **A/Start** to activate, **LB/RB** to switch tabs, and **B** to return to the keyboard.
+With the wheel open, hold **RT** and move the left stick to move the text cursor. Hold **LB** while moving to select text; hold **RB** to move by words, or both to select by words. The wheel shows the configured shortcut and hold progress while you hold it to open Settings, with a confirmation sound at the threshold. In Settings, use D-pad up/down to move between controls, left/right to change the focused value, **A/Start** to activate, **LB/RB** to switch tabs, and **B** to return to the keyboard.
 
 ## Opening and appearance
 

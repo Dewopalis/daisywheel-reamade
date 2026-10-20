@@ -438,6 +438,7 @@ int main(int argc,char **argv){
     auto *editor=new QPlainTextEdit;editor->setPlaceholderText("Tap here, then type with your controller");editor->setMaximumHeight(110);addControl(editor);
     editor->setVisible(!systemMode);
     auto *view=new WheelView;box->addWidget(view);
+    view->setShortcutHint(QString("Hold %1 for Settings").arg(controllerButtonName(shortcutButton)));
     box->setStretch(box->indexOf(headerWidget),0);
     box->setStretch(box->indexOf(status),0);
     box->setStretch(box->indexOf(view),1);
@@ -653,6 +654,7 @@ int main(int argc,char **argv){
     });
     bool verificationSent=false;
     bool shortcutButtonDown=false;
+    bool shortcutHoldCuePlayed=false;
     int previousSoundPetal=-1;
     Uint32 shortcutPressedAt=0;
     int editDirection=-1;
@@ -707,6 +709,7 @@ int main(int argc,char **argv){
                     if(event.cbutton.button==shortcutButton&&shortcutButtonDown){
                         const Uint32 held=SDL_GetTicks()-shortcutPressedAt;
                         if(held>=800){
+                            if(!shortcutHoldCuePlayed&&window.isVisible()&&view->isVisible())soundEffects.buttonPressed();
                             if(!window.isVisible())manualToggle();
                             if(showSettings)showSettings();
                         }
@@ -714,6 +717,7 @@ int main(int argc,char **argv){
                         else if(window.isVisible()){if(showKeyboard)showKeyboard();window.hide();}
                         else {if(showKeyboard)showKeyboard();view->show();window.show();}
                         shortcutButtonDown=false;
+                        shortcutHoldCuePlayed=false;
                     }
                     continue;
                 }
@@ -729,6 +733,7 @@ int main(int argc,char **argv){
                 }
                 if(event.cbutton.button==shortcutButton) {
                     shortcutButtonDown=true;shortcutPressedAt=SDL_GetTicks();
+                    shortcutHoldCuePlayed=false;
                     soundEffects.buttonPressed();
                     continue;
                 }
@@ -824,6 +829,18 @@ int main(int argc,char **argv){
         }
         pointerMode=mouseModeNow;
         const Uint32 now=SDL_GetTicks();
+        if(shortcutButtonDown){
+            const Uint32 held=now-shortcutPressedAt;
+            if(held>=800){
+                view->setShortcutHint("Release to open Settings");
+                if(!shortcutHoldCuePlayed&&window.isVisible()&&view->isVisible()){
+                    soundEffects.buttonPressed();shortcutHoldCuePlayed=true;
+                }
+            }else{
+                const int progress=qMin(99,int(held*100/800));
+                view->setShortcutHint(QString("Hold %1 for Settings · %2%").arg(controllerButtonName(shortcutButton)).arg(progress));
+            }
+        }else view->setShortcutHint(QString("Hold %1 for Settings").arg(controllerButtonName(shortcutButton)));
         const double dt=qMin(0.05,(now-pointerLastTick)/1000.0);
         pointerLastTick=now;
         if(pointerMode&&controller){
