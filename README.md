@@ -306,9 +306,11 @@ by default. Strength scales up to the controller's full rumble level; longer
 pulses make typing and deletion feedback easier to feel. Daisywheel reports
 when a connected controller does not support rumble.
 
-Controller mouse mode works in Windows and KDE system mode. On KDE, Daisywheel
-asks the desktop's RemoteDesktop portal for pointer permission when you enable
-the option in Settings; grant pointer access in the prompt. The portal may
+Controller mouse mode works in Windows and KDE system mode, and only activates
+while the keyboard and wheel are visible. This keeps LT and the pointer controls
+available to games while Daisywheel is hidden. On KDE, Daisywheel asks the
+desktop's RemoteDesktop portal for pointer permission the first time you hold
+LT with the keyboard open; grant pointer access in the prompt. The portal may
 remember that permission across restarts. Hold LT and move the left stick to
 move the pointer. When mouse mode is active, the overlay is made click-through
 so mouse clicks reach the application underneath it.

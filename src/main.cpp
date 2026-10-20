@@ -355,7 +355,7 @@ int main(int argc,char **argv){
     int savedProfileIndex=controllerProfile->findData(savedProfile);
     controllerProfile->setCurrentIndex(savedProfileIndex<0?0:savedProfileIndex);
     controllerSettingsLayout->addRow("Profile",controllerProfile);
-    auto *mouseModeEnabled=new QCheckBox("Enable controller mouse mode (hold LT)");
+    auto *mouseModeEnabled=new QCheckBox("Mouse mode only while keyboard is open (hold LT)");
     mouseModeEnabled->setChecked(settings.value("controllerMouseEnabled",savedProfile=="living-room").toBool());
     controllerSettingsLayout->addRow(mouseModeEnabled);
     auto *pointerSpeedLabel=new QLabel;
@@ -392,9 +392,6 @@ int main(int argc,char **argv){
         settings.setValue("controllerMouseEnabled",enabled);
         pointerSpeed->setEnabled(enabled);
         setCustomProfile();
-#ifdef DAISYWHEEL_KDE
-        if(enabled&&kdeMode&&portalPointer)portalPointer->requestAccess();
-#endif
     });
     QObject::connect(hapticsEnabled,&QCheckBox::toggled,[&](bool enabled){
         settings.setValue("hapticsEnabled",enabled);
@@ -649,7 +646,7 @@ int main(int argc,char **argv){
 #ifdef DAISYWHEEL_KDE
                 if(kde && event.cbutton.button==SDL_CONTROLLER_BUTTON_BACK){manualToggle();continue;}
 #endif
-                const bool mouseModifier=systemMode&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
+                const bool mouseModifier=systemMode&&window.isVisible()&&view->isVisible()&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
                 if(mouseModifier){
                     switch(event.cbutton.button){
                     case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
@@ -700,7 +697,7 @@ int main(int argc,char **argv){
         if(!window.isVisible()||!view->isVisible()){
             backspaceHeld=false;backspaceRepeatTimer.stop();backspaceRepeatTimer.setSingleShot(true);
         }
-        bool mouseModeNow=controller&&systemMode&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
+        bool mouseModeNow=controller&&systemMode&&window.isVisible()&&view->isVisible()&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
         const bool rightTriggerClickNow=mouseModeNow&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERRIGHT)>16000;
         if(rightTriggerClickNow!=rightTriggerClickHeld){
             pointerButton(false,rightTriggerClickNow);
@@ -713,6 +710,10 @@ int main(int argc,char **argv){
 #endif
         }
         if(mouseModeNow!=pointerMode){
+            if(!mouseModeNow){
+                for(Uint8 button:heldPointerButtons)pointerButton(button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,false);
+                heldPointerButtons.clear();
+            }
 #ifdef Q_OS_WIN
             if(windowsMode)windowsInput.setPointerPassthrough(mouseModeNow);
 #endif
