@@ -1,6 +1,7 @@
 #include "wheel.h"
 #include "visibility.h"
 #include "placement.h"
+#include "soundeffects.h"
 #include <QApplication>
 #include <QWidget>
 #include <QPainter>
@@ -34,6 +35,7 @@
 #include <QLockFile>
 #include <QStandardPaths>
 #include <functional>
+#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <SDL.h>
@@ -346,6 +348,8 @@ int main(int argc,char **argv){
 #else
     QWidget window;
 #endif
+    SoundEffects soundEffects;
+    bool soundAvailable=false;
     window.setWindowTitle("Daisywheel — controller prototype");
     app.setQuitOnLastWindowClosed(false);
     window.setWindowFlags(Qt::Window|Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
@@ -377,11 +381,56 @@ int main(int argc,char **argv){
     auto *windowSettingsLayout=new QFormLayout(windowSettingsGroup);
     auto *controllerSettingsGroup=new QGroupBox("Controller");
     auto *controllerSettingsLayout=new QFormLayout(controllerSettingsGroup);
+    auto *soundSettingsGroup=new QGroupBox("Sound effects");
+    auto *soundSettingsLayout=new QFormLayout(soundSettingsGroup);
+    auto *soundEnabled=new QCheckBox("Enable sound effects");
+    soundEnabled->setChecked(settings.value("soundEnabled",true).toBool());
+    soundSettingsLayout->addRow(soundEnabled);
+    auto *soundVolumeLabel=new QLabel;
+    auto *soundVolume=new QSlider(Qt::Horizontal);
+    soundVolume->setRange(0,100);
+    int initialSoundVolume=settings.value("soundVolume",50).toInt();
+    if(settings.value("soundLevelRevision",0).toInt()<1){
+        // Preserve users' previously selected quiet level after the master
+        // output is reduced by 10x. Values above 10 simply become quieter.
+        if(settings.contains("soundVolume")&&initialSoundVolume>0&&initialSoundVolume<=10)
+            initialSoundVolume=std::min(100,initialSoundVolume*10);
+        settings.setValue("soundLevelRevision",1);
+    }
+    soundVolume->setValue(initialSoundVolume);
+    soundSettingsLayout->addRow(soundVolumeLabel,soundVolume);
+    auto *previewSound=new QPushButton("Preview button sound");
+    soundSettingsLayout->addRow(previewSound);
+    auto *previewPetalSound=new QPushButton("Preview petal sound");
+    soundSettingsLayout->addRow(previewPetalSound);
+    soundVolume->setEnabled(soundEnabled->isChecked());
+    previewSound->setEnabled(soundEnabled->isChecked());
+    previewPetalSound->setEnabled(soundEnabled->isChecked());
+    soundEffects.setEnabled(soundEnabled->isChecked());
+    soundEffects.setVolume(soundVolume->value());
+    auto updateSoundVolume=[&](int value){
+        soundVolumeLabel->setText(value==0?"Volume: 0% (off)":QString("Volume: %1%").arg(value));
+        soundEffects.setVolume(value);
+        settings.setValue("soundVolume",value);
+    };
+    updateSoundVolume(soundVolume->value());
+    soundSettingsLayout->addRow(new QLabel("Petal movement plays a soft ringing chord; button presses play a short pluck."));
+    QObject::connect(soundEnabled,&QCheckBox::toggled,[&](bool enabled){
+        settings.setValue("soundEnabled",enabled);
+        soundEffects.setEnabled(enabled);
+        soundVolume->setEnabled(enabled);
+        previewSound->setEnabled(enabled);
+        previewPetalSound->setEnabled(enabled);
+    });
+    QObject::connect(soundVolume,&QSlider::valueChanged,updateSoundVolume);
+    QObject::connect(previewSound,&QPushButton::clicked,[&]{soundEffects.buttonPressed();});
+    QObject::connect(previewPetalSound,&QPushButton::clicked,[&]{soundEffects.petalChanged(0);});
     auto *keyboardSettingsGroup=new QGroupBox("Keyboard");
     auto *keyboardSettingsLayout=new QVBoxLayout(keyboardSettingsGroup);
     auto *settingsTabs=new QTabWidget(settingsPanel);
     settingsTabs->addTab(windowSettingsGroup,"Window");
     settingsTabs->addTab(controllerSettingsGroup,"Controller");
+    settingsTabs->addTab(soundSettingsGroup,"Sound");
 #ifdef Q_OS_WIN
     if(windowsMode)settingsTabs->addTab(keyboardSettingsGroup,"Keyboard");
 #endif
@@ -406,6 +455,9 @@ int main(int argc,char **argv){
             "<p>When enabled, mouse mode only works while the keyboard is visible. Hold <b>LT</b> "
             "and move the left stick to move the pointer. <b>R1</b> clicks and <b>R2</b> right-clicks; "
             "<b>X/Y</b> or the D-pad scroll. Release LT to return to typing.</p>"
+            "<h3>Sound</h3>"
+            "<p>Petal changes use a soft pitch cue, with a brighter cue for selections and actions. "
+            "Adjust the volume or disable sound effects in Sound settings.</p>"
             "<h3>Window</h3>"
             "<p>Drag the title area to move Daisywheel. Use the corner grip to resize. "
             "Settings contains position, transparency, and controller options.</p>");
@@ -717,9 +769,13 @@ int main(int argc,char **argv){
         Q_UNUSED(steps);
 #endif
     };
-    auto commit=[&](int slot){if(view->selected<0||!view->isVisible())return;
+    auto commit=[&](int slot){
+        if(view->selected<0||!view->isVisible())return;
         char ch=(view->symbol?wheel::symbols:wheel::letters)[view->selected][slot];
-        QString text(QChar::fromLatin1(ch));if(view->upper&&!view->symbol)text=text.toUpper();sendText(text);
+        QString text(QChar::fromLatin1(ch));
+        if(view->upper&&!view->symbol)text=text.toUpper();
+        soundEffects.buttonPressed();
+        sendText(text);
     };
     SDL_GameController *controller=nullptr;
     bool controllerRumbleAvailable=true;
@@ -770,6 +826,7 @@ int main(int argc,char **argv){
     });
     bool verificationSent=false;
     bool shortcutButtonDown=false;
+    int previousSoundPetal=-1;
     Uint32 shortcutPressedAt=0;
     QObject::connect(&timer,&QTimer::timeout,[&]{
         if(sdlOk){SDL_Event event;
@@ -814,10 +871,12 @@ int main(int argc,char **argv){
                     settings.setValue("shortcut",shortcutButton);
                     shortcutButtonDown=false;
                     updateShortcutCapture(false);
+                    soundEffects.buttonPressed();
                     continue;
                 }
                 if(event.cbutton.button==shortcutButton) {
                     shortcutButtonDown=true;shortcutPressedAt=SDL_GetTicks();
+                    soundEffects.buttonPressed();
                     continue;
                 }
                 const bool mouseModifier=systemMode&&window.isVisible()&&view->isVisible()&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
@@ -826,12 +885,13 @@ int main(int argc,char **argv){
                     case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
                         pointerButton(true,true);
                         if(!heldPointerButtons.contains(event.cbutton.button))heldPointerButtons.append(event.cbutton.button);
+                        soundEffects.buttonPressed();
                         if(haptic)haptic(35);
                         break;
-                    case SDL_CONTROLLER_BUTTON_X:pointerScroll(invertScrolling->isChecked()?-1:1);if(haptic)haptic(25);break;
-                    case SDL_CONTROLLER_BUTTON_Y:pointerScroll(invertScrolling->isChecked()?1:-1);if(haptic)haptic(25);break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_UP:pointerScroll(invertScrolling->isChecked()?-3:3);if(haptic)haptic(25);break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN:pointerScroll(invertScrolling->isChecked()?3:-3);if(haptic)haptic(25);break;
+                    case SDL_CONTROLLER_BUTTON_X:pointerScroll(invertScrolling->isChecked()?-1:1);soundEffects.buttonPressed();if(haptic)haptic(25);break;
+                    case SDL_CONTROLLER_BUTTON_Y:pointerScroll(invertScrolling->isChecked()?1:-1);soundEffects.buttonPressed();if(haptic)haptic(25);break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_UP:pointerScroll(invertScrolling->isChecked()?-3:3);soundEffects.buttonPressed();if(haptic)haptic(25);break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN:pointerScroll(invertScrolling->isChecked()?3:-3);soundEffects.buttonPressed();if(haptic)haptic(25);break;
                     default:break;
                     }
                     continue;
@@ -845,17 +905,18 @@ int main(int argc,char **argv){
                 case SDL_CONTROLLER_BUTTON_B:view->flashFaceButton(1);commit(1);break;
                 case SDL_CONTROLLER_BUTTON_X:view->flashFaceButton(2);commit(2);break;
                 case SDL_CONTROLLER_BUTTON_Y:view->flashFaceButton(3);commit(3);break;
-                case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:view->upper=!view->upper;if(haptic)haptic(35);break;
-                case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:view->symbol=!view->symbol;if(haptic)haptic(35);break;
-                case SDL_CONTROLLER_BUTTON_LEFTSTICK:sendText(" ");break;
+                case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:view->upper=!view->upper;soundEffects.buttonPressed();if(haptic)haptic(35);break;
+                case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:view->symbol=!view->symbol;soundEffects.buttonPressed();if(haptic)haptic(35);break;
+                case SDL_CONTROLLER_BUTTON_LEFTSTICK:soundEffects.buttonPressed();sendText(" ");break;
                 case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+                    soundEffects.buttonPressed();
                     sendControl(true);
                     backspaceHeld=true;
                     backspaceRepeatTimer.setInterval(400);
                     backspaceRepeatTimer.setSingleShot(true);
                     backspaceRepeatTimer.start();
                     break;
-                case SDL_CONTROLLER_BUTTON_START:sendControl(false);break;
+                case SDL_CONTROLLER_BUTTON_START:soundEffects.buttonPressed();sendControl(false);break;
                 default:break;
                 }
             }
@@ -867,6 +928,7 @@ int main(int argc,char **argv){
         const bool rightTriggerClickNow=mouseModeNow&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERRIGHT)>16000;
         if(rightTriggerClickNow!=rightTriggerClickHeld){
             pointerButton(false,rightTriggerClickNow);
+            if(rightTriggerClickNow)soundEffects.buttonPressed();
             if(rightTriggerClickNow&&haptic)haptic(35);
         }
         rightTriggerClickHeld=rightTriggerClickNow;
@@ -907,6 +969,13 @@ int main(int argc,char **argv){
         if(controller&&!pointerMode){
             view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
         }
+        if(window.isVisible()&&view->isVisible()&&!pointerMode&&view->selected>=0){
+            if(previousSoundPetal>=0&&view->selected!=previousSoundPetal)
+                soundEffects.petalChanged(view->selected);
+            previousSoundPetal=view->selected;
+        }else{
+            previousSoundPetal=-1;
+        }
         view->l1Down=controller&&SDL_GameControllerGetButton(controller,SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
         const bool leftTriggerDown=controller&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
         if(leftTriggerDown&&!view->l2Down)view->flashTrigger(true);
@@ -919,6 +988,7 @@ int main(int argc,char **argv){
         view->r3Down=controller&&SDL_GameControllerGetButton(controller,SDL_CONTROLLER_BUTTON_RIGHTSTICK);
         QString statusText=controller?QString(SDL_GameControllerName(controller)):sdlOk?"Connect a controller":"Controller initialization failed";
         if(pointerMode)statusText+=" · Mouse mode";
+        if(soundEnabled->isChecked()&&!soundAvailable)statusText+=" · Sound output unavailable";
         if(systemMode&&controller&&hapticsEnabled->isChecked()&&!controllerRumbleAvailable)
             statusText+=" · Controller rumble unavailable";
 #ifdef DAISYWHEEL_KDE
@@ -1084,8 +1154,10 @@ int main(int argc,char **argv){
     });
     applyMinimalMode(minimalActive);
     if(!windowsMode)window.adjustSize();
+    soundAvailable=soundEffects.open();
     if(!systemMode)window.show();
     if(app.arguments().contains("--smoke-test"))QTimer::singleShot(1000,&app,&QApplication::quit);
     int result=app.exec();
+    soundEffects.close();
     if(controller)SDL_GameControllerClose(controller);if(sdlOk)SDL_Quit();return result;
 }
