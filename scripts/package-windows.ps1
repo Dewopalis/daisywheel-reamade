@@ -1,7 +1,7 @@
 param(
     [string]$BuildDirectory = 'build-ci',
     [string]$ToolchainBin = 'C:\msys64\ucrt64\bin',
-    [string]$Version = '0.3.1'
+    [string]$Version = '0.4.0'
 )
 $ErrorActionPreference = 'Stop'
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version must be MAJOR.MINOR.PATCH' }
