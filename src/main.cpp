@@ -341,9 +341,18 @@ int main(int argc,char **argv){
     auto *pointerSpeedLabel=new QLabel;addControl(pointerSpeedLabel);
     auto *pointerSpeed=new QSlider(Qt::Horizontal);pointerSpeed->setRange(250,1800);
     pointerSpeed->setValue(settings.value("pointerSpeed",950).toInt());addControl(pointerSpeed);
+    auto *hapticsEnabled=new QCheckBox("Enable haptic feedback");
+    hapticsEnabled->setChecked(settings.value("hapticsEnabled",false).toBool());addControl(hapticsEnabled);
+    auto *hapticsStrengthLabel=new QLabel;addControl(hapticsStrengthLabel);
+    auto *hapticsStrength=new QSlider(Qt::Horizontal);hapticsStrength->setRange(10,100);
+    hapticsStrength->setValue(settings.value("hapticsStrength",50).toInt());addControl(hapticsStrength);
+    hapticsStrengthLabel->setText(QString("Haptic strength: %1%").arg(hapticsStrength->value()));
     controllerProfile->setVisible(systemMode);mouseModeEnabled->setVisible(systemMode);
     pointerSpeedLabel->setVisible(systemMode);pointerSpeed->setVisible(systemMode);
+    hapticsEnabled->setVisible(systemMode);hapticsStrengthLabel->setVisible(systemMode);
+    hapticsStrength->setVisible(systemMode);
     pointerSpeed->setEnabled(mouseModeEnabled->isChecked());
+    hapticsStrength->setEnabled(hapticsEnabled->isChecked());
     bool applyingControllerPreset=false;
     auto setCustomProfile=[&]{
         if(applyingControllerPreset)return;
@@ -362,6 +371,16 @@ int main(int argc,char **argv){
     QObject::connect(mouseModeEnabled,&QCheckBox::toggled,[&](bool enabled){
         settings.setValue("controllerMouseEnabled",enabled);
         pointerSpeed->setEnabled(enabled);
+        setCustomProfile();
+    });
+    QObject::connect(hapticsEnabled,&QCheckBox::toggled,[&](bool enabled){
+        settings.setValue("hapticsEnabled",enabled);
+        hapticsStrength->setEnabled(enabled);
+        setCustomProfile();
+    });
+    QObject::connect(hapticsStrength,&QSlider::valueChanged,[&](int value){
+        hapticsStrengthLabel->setText(QString("Haptic strength: %1%").arg(value));
+        settings.setValue("hapticsStrength",value);
         setCustomProfile();
     });
     auto setPointerSpeed=[&](int value){
@@ -463,23 +482,29 @@ int main(int argc,char **argv){
     };
     auto *quit=new QPushButton("Quit");addControl(quit);
     QObject::connect(quit,&QPushButton::clicked,&app,&QApplication::quit);
+    std::function<void(Uint32)> haptic;
     auto sendText=[&](const QString &text){
 #ifdef Q_OS_WIN
-        if(windowsMode){windowsInput.commit(text);return;}
+        if(windowsMode){windowsInput.commit(text);if(haptic)haptic(24);return;}
 #endif
 #ifdef DAISYWHEEL_KDE
-        if(kde){if(!kde->commit(text))status->setText("No active text field — focus a text field in another app");return;}
+        if(kde){
+            if(!kde->commit(text))status->setText("No active text field — focus a text field in another app");
+            else if(haptic)haptic(24);
+            return;
+        }
 #endif
         editor->insertPlainText(text);
+        if(haptic)haptic(24);
     };
     auto sendControl=[&](bool backspace){
 #ifdef Q_OS_WIN
-        if(windowsMode){windowsInput.key(backspace);return;}
+        if(windowsMode){windowsInput.key(backspace);if(backspace&&haptic)haptic(16);return;}
 #endif
 #ifdef DAISYWHEEL_KDE
-        if(kde){kde->key(backspace?0xff08:0xff0d);return;}
+        if(kde){kde->key(backspace?0xff08:0xff0d);if(backspace&&haptic)haptic(16);return;}
 #endif
-        if(backspace){auto cursor=editor->textCursor();cursor.deletePreviousChar();editor->setTextCursor(cursor);}
+        if(backspace){auto cursor=editor->textCursor();cursor.deletePreviousChar();editor->setTextCursor(cursor);if(haptic)haptic(16);}
         else editor->insertPlainText("\n");
     };
     auto pointerMove=[&](int dx,int dy){
@@ -513,6 +538,11 @@ int main(int argc,char **argv){
         QString text(QChar::fromLatin1(ch));if(view->upper&&!view->symbol)text=text.toUpper();sendText(text);
     };
     SDL_GameController *controller=nullptr;
+    haptic=[&](Uint32 duration){
+        if(!systemMode||!controller||!hapticsEnabled->isChecked())return;
+        const Uint16 strength=static_cast<Uint16>(hapticsStrength->value()*655);
+        SDL_GameControllerRumble(controller,strength,strength,duration);
+    };
     QTimer timer;
     QTimer backspaceRepeatTimer;
     backspaceRepeatTimer.setSingleShot(true);
@@ -661,7 +691,11 @@ int main(int argc,char **argv){
         }else{
             pointerRemainderX=pointerRemainderY=0.0;
         }
-        if(controller&&!pointerMode)view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
+        if(controller&&!pointerMode){
+            const int previousSelection=view->selected;
+            view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
+            if(view->selected>=0&&view->selected!=previousSelection&&haptic)haptic(8);
+        }
         QString statusText=controller?QString("Connected: %1").arg(SDL_GameControllerName(controller)):sdlOk?"Connect a controller":"Controller initialization failed";
         if(pointerMode)statusText+=" · Mouse mode: RS move, A/B click, X/Y scroll";
 #ifdef DAISYWHEEL_KDE

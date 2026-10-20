@@ -23,8 +23,8 @@ Minimal mode with dragging, and the transparency control.
 development PCs running Windows and KDE Plasma / Wayland. The v0.2.0 release
 adds a guided first-launch installer for the Linux AppImage. Touchscreen devices,
 broader application compatibility and Steam Deck Gaming Mode still need testing.
-Controller mouse mode and hold-to-repeat Backspace are part of the current
-development build and are planned for the next release.
+Controller mouse mode, hold-to-repeat Backspace and configurable haptic feedback
+are part of the current development build and are planned for the next release.
 
 ## Open source and contributing
 
@@ -290,6 +290,7 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | Controller profile | Handheld, Living room / desktop, or Custom; saved between launches |
 | Enable controller mouse mode | Disabled by the Handheld preset; the Living room / desktop preset enables it |
 | Pointer speed | Adjustable and saved between launches |
+| Haptic feedback | Optional; strength is adjustable and both settings are saved between launches |
 | Minimal mode | Shows the wheel at a compact size; use the upper-right **≡** button or hold the selected controller shortcut to restore the controls |
 | KDE system-mode position | Drag the header or corner to see a translucent window outline preview; position and size apply and save on release |
 | Drag handle / pin toggle | Drag the header to move and enable **Pin position** to lock it |
@@ -297,6 +298,10 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | Quit | Stops the process; controller reopening requires relaunch |
 
 KWin's `VirtualKeyboard.visible` property describes its native input panel, not this independent overlay; it is not a reliable visibility check for Daisywheel.
+
+Haptic feedback pulses when the controller moves between petals, types a
+character, or deletes text. It uses controller rumble support and is disabled
+by default.
 
 Controller mouse mode works in Windows and KDE system mode. On KDE, Daisywheel
 asks the desktop's RemoteDesktop portal for pointer permission the first time
@@ -345,7 +350,7 @@ kbuildsycoca6 --noincremental
 - [x] KDE Virtual Keyboard integration, including KDE-controlled automatic opening.
 - [x] Windows UI Automation text-field detection and optional sign-in startup.
 - [x] Move, pin and resize the overlay; Minimal mode and adjustable transparency.
-- [x] Add handheld and living-room controller profiles, adjustable pointer speed, mouse controls, and hold-to-repeat Backspace.
+- [x] Add handheld and living-room controller profiles, adjustable pointer speed, mouse controls, hold-to-repeat Backspace, and optional haptic feedback.
 - [x] Build and publish v0.2.0 packages for Windows and Linux, including the guided Linux AppImage installer.
 - [ ] Validate touch/tablet opening and KDE keyboard policies on supported hardware.
 - [ ] Test sign-in/reboot startup, controller reconnection and multiple displays on target systems.
