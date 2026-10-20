@@ -36,6 +36,7 @@
 #ifdef DAISYWHEEL_KDE
 #include "kdeinput.h"
 #include "appimageinstaller.h"
+#include "portalpointer.h"
 #include <QDBusInterface>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
@@ -249,7 +250,9 @@ int main(int argc,char **argv){
 #endif
 #ifdef DAISYWHEEL_KDE
     std::unique_ptr<KdeInput> kde;
+    std::unique_ptr<PortalPointer> portalPointer;
     if(kdeMode)kde=std::make_unique<KdeInput>();
+    if(kdeMode)portalPointer=std::make_unique<PortalPointer>(settings.value("pointerRestoreToken").toString());
 #else
     if(kdeMode){std::cerr<<"KDE backend unavailable in this build\n";return 1;}
 #endif
@@ -323,6 +326,51 @@ int main(int argc,char **argv){
     auto *alpha=new QGraphicsOpacityEffect(content);content->setGraphicsEffect(alpha);
     auto setOpacity=[&](int value){alpha->setOpacity(value/100.0);opacityLabel->setText(QString("Opacity: %1%").arg(value));settings.setValue("opacity",value);};
     setOpacity(opacity->value());QObject::connect(opacity,&QSlider::valueChanged,setOpacity);
+    addControl(new QLabel("Controller profile"));
+    auto *controllerProfile=new QComboBox;
+    controllerProfile->addItem("Handheld", "handheld");
+    controllerProfile->addItem("Living room / desktop", "living-room");
+    controllerProfile->addItem("Custom", "custom");
+    QString savedProfile=settings.value("controllerProfile","handheld").toString();
+    int savedProfileIndex=controllerProfile->findData(savedProfile);
+    controllerProfile->setCurrentIndex(savedProfileIndex<0?0:savedProfileIndex);
+    addControl(controllerProfile);
+    auto *mouseModeEnabled=new QCheckBox("Enable controller mouse mode");
+    mouseModeEnabled->setChecked(settings.value("controllerMouseEnabled",savedProfile=="living-room").toBool());
+    addControl(mouseModeEnabled);
+    auto *pointerSpeedLabel=new QLabel;addControl(pointerSpeedLabel);
+    auto *pointerSpeed=new QSlider(Qt::Horizontal);pointerSpeed->setRange(250,1800);
+    pointerSpeed->setValue(settings.value("pointerSpeed",950).toInt());addControl(pointerSpeed);
+    controllerProfile->setVisible(systemMode);mouseModeEnabled->setVisible(systemMode);
+    pointerSpeedLabel->setVisible(systemMode);pointerSpeed->setVisible(systemMode);
+    pointerSpeed->setEnabled(mouseModeEnabled->isChecked());
+    bool applyingControllerPreset=false;
+    auto setCustomProfile=[&]{
+        if(applyingControllerPreset)return;
+        controllerProfile->setCurrentIndex(controllerProfile->findData("custom"));
+        settings.setValue("controllerProfile","custom");
+    };
+    QObject::connect(controllerProfile,&QComboBox::currentIndexChanged,[&](int index){
+        const QString profile=controllerProfile->itemData(index).toString();
+        settings.setValue("controllerProfile",profile);
+        if(profile=="custom")return;
+        applyingControllerPreset=true;
+        mouseModeEnabled->setChecked(profile=="living-room");
+        pointerSpeed->setValue(950);
+        applyingControllerPreset=false;
+    });
+    QObject::connect(mouseModeEnabled,&QCheckBox::toggled,[&](bool enabled){
+        settings.setValue("controllerMouseEnabled",enabled);
+        pointerSpeed->setEnabled(enabled);
+        setCustomProfile();
+    });
+    auto setPointerSpeed=[&](int value){
+        pointerSpeedLabel->setText(QString("Pointer speed: %1").arg(value));
+        settings.setValue("pointerSpeed",value);
+        setCustomProfile();
+    };
+    setPointerSpeed(pointerSpeed->value());
+    QObject::connect(pointerSpeed,&QSlider::valueChanged,setPointerSpeed);
     addControl(new QLabel("Controller shortcut (works while running in background)"));
     auto *shortcut=new QComboBox;
     shortcut->addItem("Home / Guide",SDL_CONTROLLER_BUTTON_GUIDE);
@@ -332,6 +380,14 @@ int main(int argc,char **argv){
     shortcut->setCurrentIndex(shortcutIndex<0?0:shortcutIndex);addControl(shortcut);
     QObject::connect(shortcut,&QComboBox::currentIndexChanged,[&](int){settings.setValue("shortcut",shortcut->currentData());});
     auto *status=new QLabel;addControl(status);
+#ifdef DAISYWHEEL_KDE
+    if(portalPointer){
+        portalPointer->statusChanged=[&](const QString &message){status->setText(message);};
+        portalPointer->restoreTokenChanged=[&](const QString &value){
+            settings.setValue("pointerRestoreToken",value);settings.sync();
+        };
+    }
+#endif
     auto *editor=new QPlainTextEdit;editor->setPlaceholderText("Tap here, then type with your controller");editor->setMaximumHeight(110);addControl(editor);
     editor->setVisible(!systemMode);
     auto *view=new WheelView;box->addWidget(view);
@@ -363,7 +419,8 @@ int main(int argc,char **argv){
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
     addControl(new QLabel("Left stick: petal · Face buttons: character · LB: shift · RB: symbols\n"
-                             "Left stick click: space · Right stick click: backspace · Start: enter · Back: hide\n"
+                             "When mouse mode is enabled, hold LT: right stick pointer · A/B click · X/Y scroll\n"
+                             "Left stick click: space · Right stick click/hold: backspace · Start: enter · Back: hide\n"
                              "Tap ≡ or hold the selected controller shortcut to restore controls from Minimal mode"));
     auto *toggle=new QPushButton("Show / hide wheel");addControl(toggle);
     QObject::connect(toggle,&QPushButton::clicked,[=]{view->setVisible(!view->isVisible());});
@@ -425,12 +482,55 @@ int main(int argc,char **argv){
         if(backspace){auto cursor=editor->textCursor();cursor.deletePreviousChar();editor->setTextCursor(cursor);}
         else editor->insertPlainText("\n");
     };
+    auto pointerMove=[&](int dx,int dy){
+#ifdef Q_OS_WIN
+        if(windowsMode)windowsInput.mouseMove(dx,dy);
+#endif
+#ifdef DAISYWHEEL_KDE
+        if(portalPointer)portalPointer->move(dx,dy);
+#endif
+    };
+    auto pointerButton=[&](bool left,bool pressed){
+#ifdef Q_OS_WIN
+        if(windowsMode)windowsInput.mouseButton(left,pressed);
+#endif
+#ifdef DAISYWHEEL_KDE
+        if(portalPointer)portalPointer->button(left,pressed);
+#endif
+    };
+    auto pointerScroll=[&](int steps){
+#ifdef Q_OS_WIN
+        if(windowsMode)windowsInput.mouseScroll(steps);
+#endif
+#ifdef DAISYWHEEL_KDE
+        if(portalPointer)portalPointer->scroll(steps);
+#else
+        Q_UNUSED(steps);
+#endif
+    };
     auto commit=[&](int slot){if(view->selected<0||!view->isVisible())return;
         char ch=(view->symbol?wheel::symbols:wheel::letters)[view->selected][slot];
         QString text(QChar::fromLatin1(ch));if(view->upper&&!view->symbol)text=text.toUpper();sendText(text);
     };
     SDL_GameController *controller=nullptr;
     QTimer timer;
+    QTimer backspaceRepeatTimer;
+    backspaceRepeatTimer.setSingleShot(true);
+    bool backspaceHeld=false;
+    bool pointerMode=false;
+    Uint32 pointerLastTick=SDL_GetTicks();
+    double pointerRemainderX=0.0,pointerRemainderY=0.0;
+    QList<Uint8> heldPointerButtons;
+    QObject::connect(&backspaceRepeatTimer,&QTimer::timeout,[&]{
+        if(!backspaceHeld||!window.isVisible()||!view->isVisible()){
+            backspaceHeld=false;
+            return;
+        }
+        sendControl(true);
+        backspaceRepeatTimer.setInterval(70);
+        backspaceRepeatTimer.setSingleShot(false);
+        backspaceRepeatTimer.start();
+    });
     bool verificationSent=false;
     bool shortcutButtonDown=false;
     Uint32 shortcutPressedAt=0;
@@ -438,9 +538,26 @@ int main(int argc,char **argv){
         if(sdlOk){SDL_Event event;
             while(SDL_PollEvent(&event)){
                 if(event.type==SDL_CONTROLLERDEVICEADDED&&!controller)controller=SDL_GameControllerOpen(event.cdevice.which);
-                if(event.type==SDL_CONTROLLERDEVICEREMOVED&&controller&&event.cdevice.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))){SDL_GameControllerClose(controller);controller=nullptr;view->selected=-1;shortcutButtonDown=false;}
-                if(event.type==SDL_CONTROLLERBUTTONUP&&controller&&event.cbutton.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))&&event.cbutton.button==shortcut->currentData().toInt()){
-                    if(shortcutButtonDown){
+                if(event.type==SDL_CONTROLLERDEVICEREMOVED&&controller&&event.cdevice.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))){
+                    for(Uint8 button:heldPointerButtons)pointerButton(button==SDL_CONTROLLER_BUTTON_A,false);
+                    heldPointerButtons.clear();
+#ifdef Q_OS_WIN
+                    if(windowsMode)windowsInput.setPointerPassthrough(false);
+#endif
+#ifdef DAISYWHEEL_KDE
+                    if(kde&&window.windowHandle())window.windowHandle()->setFlag(Qt::WindowTransparentForInput,false);
+#endif
+                    SDL_GameControllerClose(controller);controller=nullptr;view->selected=-1;shortcutButtonDown=false;backspaceHeld=false;backspaceRepeatTimer.stop();backspaceRepeatTimer.setSingleShot(true);pointerMode=false;
+                }
+                if(event.type==SDL_CONTROLLERBUTTONUP&&controller&&event.cbutton.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))){
+                    if(event.cbutton.button==SDL_CONTROLLER_BUTTON_RIGHTSTICK){
+                        backspaceHeld=false;backspaceRepeatTimer.stop();backspaceRepeatTimer.setSingleShot(true);
+                    }
+                    if(heldPointerButtons.contains(event.cbutton.button)){
+                        pointerButton(event.cbutton.button==SDL_CONTROLLER_BUTTON_A,false);
+                        heldPointerButtons.removeAll(event.cbutton.button);
+                    }
+                    if(event.cbutton.button==shortcut->currentData().toInt()&&shortcutButtonDown){
                         const Uint32 held=SDL_GetTicks()-shortcutPressedAt;
                         if(minimalActive&&window.isVisible()&&held>=800)minimalMode->setChecked(false);
                         else if(systemMode)manualToggle();
@@ -459,6 +576,22 @@ int main(int argc,char **argv){
 #ifdef DAISYWHEEL_KDE
                 if(kde && event.cbutton.button==SDL_CONTROLLER_BUTTON_BACK){manualToggle();continue;}
 #endif
+                const bool mouseModifier=systemMode&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
+                if(mouseModifier){
+                    switch(event.cbutton.button){
+                    case SDL_CONTROLLER_BUTTON_A:
+                    case SDL_CONTROLLER_BUTTON_B:
+                        pointerButton(event.cbutton.button==SDL_CONTROLLER_BUTTON_A,true);
+                        if(!heldPointerButtons.contains(event.cbutton.button))heldPointerButtons.append(event.cbutton.button);
+                        break;
+                    case SDL_CONTROLLER_BUTTON_X:pointerScroll(1);break;
+                    case SDL_CONTROLLER_BUTTON_Y:pointerScroll(-1);break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_UP:pointerScroll(3);break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN:pointerScroll(-3);break;
+                    default:break;
+                    }
+                    continue;
+                }
                 if(!window.isVisible())continue;
                 if(!view->isVisible()){if(event.cbutton.button==SDL_CONTROLLER_BUTTON_BACK)view->show();continue;}
                 // Sample the stick before committing, including movement in this event batch.
@@ -471,7 +604,13 @@ int main(int argc,char **argv){
                 case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:view->upper=!view->upper;break;
                 case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:view->symbol=!view->symbol;break;
                 case SDL_CONTROLLER_BUTTON_LEFTSTICK:sendText(" ");break;
-                case SDL_CONTROLLER_BUTTON_RIGHTSTICK:sendControl(true);break;
+                case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+                    sendControl(true);
+                    backspaceHeld=true;
+                    backspaceRepeatTimer.setInterval(400);
+                    backspaceRepeatTimer.setSingleShot(true);
+                    backspaceRepeatTimer.start();
+                    break;
                 case SDL_CONTROLLER_BUTTON_START:sendControl(false);break;
                 case SDL_CONTROLLER_BUTTON_BACK:
 #ifdef DAISYWHEEL_KDE
@@ -485,8 +624,50 @@ int main(int argc,char **argv){
                 }
             }
         }
-        if(controller)view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
-        status->setText(controller?QString("Connected: %1").arg(SDL_GameControllerName(controller)):sdlOk?"Connect a controller":"Controller initialization failed");view->update();
+        if(!window.isVisible()||!view->isVisible()){
+            backspaceHeld=false;backspaceRepeatTimer.stop();backspaceRepeatTimer.setSingleShot(true);
+        }
+        bool mouseModeNow=controller&&systemMode&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
+        if(mouseModeNow&&!pointerMode){
+#ifdef DAISYWHEEL_KDE
+            if(portalPointer)portalPointer->requestAccess();
+#endif
+        }
+        if(mouseModeNow!=pointerMode){
+#ifdef Q_OS_WIN
+            if(windowsMode)windowsInput.setPointerPassthrough(mouseModeNow);
+#endif
+#ifdef DAISYWHEEL_KDE
+            if(kde&&window.windowHandle())window.windowHandle()->setFlag(Qt::WindowTransparentForInput,mouseModeNow);
+#endif
+        }
+        pointerMode=mouseModeNow;
+        const Uint32 now=SDL_GetTicks();
+        const double dt=qMin(0.05,(now-pointerLastTick)/1000.0);
+        pointerLastTick=now;
+        if(pointerMode&&controller){
+            auto curve=[](Sint16 raw){
+                const double value=raw/32768.0;
+                const double magnitude=std::abs(value);
+                if(magnitude<=0.18)return 0.0;
+                const double normalized=(magnitude-0.18)/0.82;
+                return std::copysign(std::pow(normalized,1.6),value);
+            };
+            pointerRemainderX+=curve(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_RIGHTX))*pointerSpeed->value()*dt;
+            pointerRemainderY+=curve(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_RIGHTY))*pointerSpeed->value()*dt;
+            const int dx=static_cast<int>(pointerRemainderX),dy=static_cast<int>(pointerRemainderY);
+            pointerRemainderX-=dx;pointerRemainderY-=dy;
+            pointerMove(dx,dy);
+        }else{
+            pointerRemainderX=pointerRemainderY=0.0;
+        }
+        if(controller&&!pointerMode)view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
+        QString statusText=controller?QString("Connected: %1").arg(SDL_GameControllerName(controller)):sdlOk?"Connect a controller":"Controller initialization failed";
+        if(pointerMode)statusText+=" · Mouse mode: RS move, A/B click, X/Y scroll";
+#ifdef DAISYWHEEL_KDE
+        if(portalPointer&&!portalPointer->status().isEmpty())statusText+=" · "+portalPointer->status();
+#endif
+        status->setText(statusText);view->update();
 #ifdef Q_OS_WIN
         if(windowsMode && !windowsInput.lastError().isEmpty())status->setText(windowsInput.lastError());
 #endif

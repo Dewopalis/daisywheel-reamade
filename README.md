@@ -23,6 +23,8 @@ Minimal mode with dragging, and the transparency control.
 development PCs running Windows and KDE Plasma / Wayland. The v0.2.0 release
 adds a guided first-launch installer for the Linux AppImage. Touchscreen devices,
 broader application compatibility and Steam Deck Gaming Mode still need testing.
+Controller mouse mode and hold-to-repeat Backspace are part of the current
+development build and are planned for the next release.
 
 ## Open source and contributing
 
@@ -261,7 +263,12 @@ Characters sit at the physical south/east/west/north face-button positions. SDL 
 | Left bumper | Toggle uppercase |
 | Right bumper | Toggle letters and symbols |
 | Left stick click | Space |
-| Right stick click | Backspace |
+| Right stick click / hold | Backspace once / repeat while held |
+| Hold left trigger (LT), when mouse mode is enabled | Switch to controller mouse mode in system mode |
+| Right stick while holding LT | Move pointer |
+| A / B while holding LT | Left-click / right-click |
+| X / Y while holding LT | Scroll up / down |
+| D-pad up / down while holding LT | Scroll faster up / down |
 | Start / Menu | Enter |
 | Home / Guide | Show or hide the keyboard by default |
 | Back / View | Also show or hide in Windows/KDE system mode |
@@ -280,6 +287,9 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | --- | --- |
 | Opacity | 30–100%, affects panel and characters together; saved between launches |
 | Controller shortcut | Saved between launches |
+| Controller profile | Handheld, Living room / desktop, or Custom; saved between launches |
+| Enable controller mouse mode | Disabled by the Handheld preset; the Living room / desktop preset enables it |
+| Pointer speed | Adjustable and saved between launches |
 | Minimal mode | Shows the wheel at a compact size; use the upper-right **≡** button or hold the selected controller shortcut to restore the controls |
 | KDE system-mode position | Drag the header or corner to see a translucent window outline preview; position and size apply and save on release |
 | Drag handle / pin toggle | Drag the header to move and enable **Pin position** to lock it |
@@ -287,6 +297,12 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | Quit | Stops the process; controller reopening requires relaunch |
 
 KWin's `VirtualKeyboard.visible` property describes its native input panel, not this independent overlay; it is not a reliable visibility check for Daisywheel.
+
+Controller mouse mode works in Windows and KDE system mode. On KDE, Daisywheel
+asks the desktop's RemoteDesktop portal for pointer permission the first time
+you hold LT; grant pointer access in the prompt. The portal may remember that
+permission across restarts. When mouse mode is active, the overlay is made
+click-through so mouse clicks reach the application underneath it.
 
 Unpin the wheel, drag the header to move it, then pin it if you want to lock the
 position. Drag the small diagonal grip in the top-left corner to resize. During
@@ -329,12 +345,13 @@ kbuildsycoca6 --noincremental
 - [x] KDE Virtual Keyboard integration, including KDE-controlled automatic opening.
 - [x] Windows UI Automation text-field detection and optional sign-in startup.
 - [x] Move, pin and resize the overlay; Minimal mode and adjustable transparency.
+- [x] Add handheld and living-room controller profiles, adjustable pointer speed, mouse controls, and hold-to-repeat Backspace.
 - [x] Build and publish v0.2.0 packages for Windows and Linux, including the guided Linux AppImage installer.
 - [ ] Validate touch/tablet opening and KDE keyboard policies on supported hardware.
 - [ ] Test sign-in/reboot startup, controller reconnection and multiple displays on target systems.
 - [ ] Broaden compatibility testing across browsers, editors and XWayland applications on Linux, and more applications and controllers on Windows.
 - [ ] Tune the compact layout for handheld screens and controls.
-- [ ] Add configurable controller mappings, deadzones and repeat behavior.
+- [ ] Add configurable per-button mappings and stick deadzones.
 - [ ] Add more languages, layouts and controller-specific button labels.
 - [ ] Test published packages on handhelds, including Steam Deck Desktop Mode and ROG Ally.
 - [ ] Investigate Steam Deck Gaming Mode separately.

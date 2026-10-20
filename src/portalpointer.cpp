@@ -1,0 +1,181 @@
+#include "portalpointer.h"
+
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusObjectPath>
+#include <QDBusPendingCallWatcher>
+#include <QDBusPendingReply>
+#include <QDBusVariant>
+#include <QRandomGenerator>
+#include <QVariant>
+
+namespace {
+constexpr auto portalService="org.freedesktop.portal.Desktop";
+constexpr auto portalPath="/org/freedesktop/portal/desktop";
+constexpr auto remoteDesktopInterface="org.freedesktop.portal.RemoteDesktop";
+constexpr auto requestInterface="org.freedesktop.portal.Request";
+constexpr auto sessionInterface="org.freedesktop.portal.Session";
+
+QString token(){
+    return QString::number(QRandomGenerator::global()->generate64(),16);
+}
+
+class PortalResponse : public QObject {
+    Q_OBJECT
+public:
+    std::function<void(uint,const QVariantMap &)> callback;
+    explicit PortalResponse(std::function<void(uint,const QVariantMap &)> callback,
+                            QObject *parent=nullptr)
+        : QObject(parent),callback(std::move(callback)) {}
+public slots:
+    void response(uint code,const QVariantMap &results){
+        auto done=std::move(callback);
+        if(done)done(code,results);
+        deleteLater();
+    }
+};
+}
+
+PortalPointer::PortalPointer(QString restoreToken,QObject *parent)
+    : QObject(parent),savedRestoreToken(std::move(restoreToken)) {}
+
+PortalPointer::~PortalPointer(){closeSession();}
+
+void PortalPointer::setStatus(const QString &status){
+    if(currentStatus==status)return;
+    currentStatus=status;
+    if(statusChanged)statusChanged(currentStatus);
+}
+
+void PortalPointer::callRequest(const QString &method,const QVariantList &arguments,
+                                std::function<void(uint,const QVariantMap &)> response){
+    QDBusMessage call=QDBusMessage::createMethodCall(
+        portalService,portalPath,remoteDesktopInterface,method);
+    call.setArguments(arguments);
+    auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call),this);
+    connect(watcher,&QDBusPendingCallWatcher::finished,this,
+            [this,watcher,response=std::move(response)]() mutable {
+        QDBusPendingReply<QDBusObjectPath> reply=*watcher;
+        watcher->deleteLater();
+        if(reply.isError()){
+            isRequesting=false;
+            setStatus(QString("Pointer permission unavailable: %1").arg(reply.error().message()));
+            return;
+        }
+        const QString requestPath=reply.value().path();
+        auto *signalReceiver=new PortalResponse(std::move(response),this);
+        const bool connected=QDBusConnection::sessionBus().connect(
+            portalService,requestPath,requestInterface,"Response",signalReceiver,
+            SLOT(response(uint,QVariantMap)));
+        if(!connected){
+            signalReceiver->deleteLater();
+            isRequesting=false;
+            setStatus("Could not monitor KDE pointer permission response");
+        }
+    });
+}
+
+void PortalPointer::requestAccess(){
+    if(isActive){setStatus("Controller mouse ready · hold LT to use");return;}
+    if(isRequesting)return;
+    if(!QDBusConnection::sessionBus().isConnected()){
+        setStatus("KDE desktop session bus is unavailable");return;
+    }
+    isRequesting=true;
+    setStatus("Requesting KDE pointer permission…");
+    createSession();
+}
+
+void PortalPointer::createSession(){
+    QVariantMap options;
+    options.insert("handle_token",token());
+    options.insert("session_handle_token",token());
+    callRequest("CreateSession",{options},[this](uint code,const QVariantMap &results){
+        if(code!=0){
+            isRequesting=false;
+            setStatus("KDE did not create a pointer session");
+            return;
+        }
+        sessionHandle=results.value("session_handle").value<QDBusObjectPath>().path();
+        if(sessionHandle.isEmpty()){
+            isRequesting=false;
+            setStatus("KDE returned an invalid pointer session");
+            return;
+        }
+        selectPointer();
+    });
+}
+
+void PortalPointer::selectPointer(){
+    QVariantMap options;
+    options.insert("handle_token",token());
+    options.insert("types",uint(2)); // POINTER only
+    options.insert("persist_mode",uint(2)); // Ask the portal to remember consent
+    if(!savedRestoreToken.isEmpty())options.insert("restore_token",savedRestoreToken);
+    callRequest("SelectDevices",{QDBusObjectPath(sessionHandle),options},
+                [this](uint code,const QVariantMap &){
+        if(code!=0){
+            isRequesting=false;
+            setStatus("KDE pointer access was not granted");
+            closeSession();
+            return;
+        }
+        startSession();
+    });
+}
+
+void PortalPointer::startSession(){
+    QVariantMap options;
+    options.insert("handle_token",token());
+    callRequest("Start",{QDBusObjectPath(sessionHandle),QString(),options},
+                [this](uint code,const QVariantMap &results){
+        isRequesting=false;
+        if(code!=0 || !(results.value("devices").toUInt()&uint(2))){
+            setStatus("KDE did not grant pointer control");
+            closeSession();
+            return;
+        }
+        isActive=true;
+        const QString restore=results.value("restore_token").toString();
+        if(!restore.isEmpty()){
+            savedRestoreToken=restore;
+            if(restoreTokenChanged)restoreTokenChanged(restore);
+        }
+        setStatus("Controller mouse ready · hold LT to use");
+    });
+}
+
+void PortalPointer::move(double dx,double dy){
+    if(!isActive || (dx==0.0&&dy==0.0))return;
+    QDBusMessage call=QDBusMessage::createMethodCall(
+        portalService,sessionHandle,remoteDesktopInterface,"NotifyPointerMotion");
+    call.setArguments({QVariantMap{},dx,dy});
+    QDBusConnection::sessionBus().asyncCall(call);
+}
+
+void PortalPointer::button(bool left,bool pressed){
+    if(!isActive)return;
+    QDBusMessage call=QDBusMessage::createMethodCall(
+        portalService,sessionHandle,remoteDesktopInterface,"NotifyPointerButton");
+    call.setArguments({QVariantMap{},int(left?0x110:0x111),uint(pressed?1:0)});
+    QDBusConnection::sessionBus().asyncCall(call);
+}
+
+void PortalPointer::scroll(int steps){
+    if(!isActive || steps==0)return;
+    QDBusMessage call=QDBusMessage::createMethodCall(
+        portalService,sessionHandle,remoteDesktopInterface,"NotifyPointerAxisDiscrete");
+    call.setArguments({QVariantMap{},uint(0),int(steps)});
+    QDBusConnection::sessionBus().asyncCall(call);
+}
+
+void PortalPointer::closeSession(){
+    if(sessionHandle.isEmpty())return;
+    QDBusMessage call=QDBusMessage::createMethodCall(
+        portalService,sessionHandle,sessionInterface,"Close");
+    QDBusConnection::sessionBus().asyncCall(call);
+    sessionHandle.clear();
+    isActive=false;
+}
+
+#include "portalpointer.moc"
