@@ -21,10 +21,11 @@ Minimal mode with dragging, and the transparency control.
 
 **Current status:** controller typing works in other applications on the
 development PCs running Windows and KDE Plasma / Wayland. The v0.2.0 release
-adds a guided first-launch installer for the Linux AppImage. Touchscreen devices,
-broader application compatibility and Steam Deck Gaming Mode still need testing.
-Controller mouse mode, hold-to-repeat Backspace and configurable haptic feedback
-are part of the current development build and are planned for the next release.
+adds a guided first-launch installer for the Linux AppImage. The controller
+profiles, mouse mode, hold-to-repeat Backspace, haptic feedback and compact
+control layout have since merged into `main` and are planned for v0.3.0.
+Touchscreen devices, broader application compatibility and Steam Deck Gaming
+Mode still need testing.
 
 ## Open source and contributing
 
@@ -287,7 +288,7 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | --- | --- |
 | Opacity | In **Settings**; 30–100%, saved between launches |
 | Controller shortcut | In **Settings**; saved between launches |
-| Controller profile | In **Settings**; Handheld, Living room / desktop, or Custom; saved between launches |
+| Controller profile | In **Settings**; Handheld disables mouse mode, Living room / desktop enables it, and Custom lets you choose; saved between launches |
 | Enable controller mouse mode | In **Settings**; disabled by Handheld and enabled by Living room / desktop |
 | Pointer speed | In **Settings**; adjustable and saved between launches |
 | Haptic feedback | In **Settings**; optional, strength adjustable, both settings saved between launches |
@@ -315,7 +316,7 @@ remember that permission across restarts. Hold LT and move the left stick to
 move the pointer. When mouse mode is active, the overlay is made click-through
 so mouse clicks reach the application underneath it.
 This follows the common handheld layout: the left stick moves the pointer, R1
-clicks, and the right trigger (R2) right-clicks while LT is held.
+clicks, and R2 right-clicks while LT is held.
 
 Unpin the wheel, drag the header to move it, then pin it if you want to lock the
 position. Drag the small diagonal grip in the top-left corner to resize. During
@@ -358,12 +359,12 @@ kbuildsycoca6 --noincremental
 - [x] KDE Virtual Keyboard integration, including KDE-controlled automatic opening.
 - [x] Windows UI Automation text-field detection and optional sign-in startup.
 - [x] Move, pin and resize the overlay; Minimal mode and adjustable transparency.
-- [x] Add handheld and living-room controller profiles, adjustable pointer speed, mouse controls, hold-to-repeat Backspace, and optional haptic feedback.
+- [x] Add handheld and living-room controller profiles, adjustable pointer speed, mouse controls, hold-to-repeat Backspace, optional haptic feedback, and a compact control layout (v0.3.0).
 - [x] Build and publish v0.2.0 packages for Windows and Linux, including the guided Linux AppImage installer.
 - [ ] Validate touch/tablet opening and KDE keyboard policies on supported hardware.
 - [ ] Test sign-in/reboot startup, controller reconnection and multiple displays on target systems.
 - [ ] Broaden compatibility testing across browsers, editors and XWayland applications on Linux, and more applications and controllers on Windows.
-- [ ] Tune the compact layout for handheld screens and controls.
+- [ ] Validate compact layout and controller labels on handheld screens and controllers.
 - [ ] Add configurable per-button mappings and stick deadzones.
 - [ ] Add more languages, layouts and controller-specific button labels.
 - [ ] Test published packages on handhelds, including Steam Deck Desktop Mode and ROG Ally.
