@@ -12,6 +12,7 @@
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QMessageBox>
 #include <QTimer>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -21,6 +22,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QGraphicsOpacityEffect>
+#include <QTabWidget>
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include <QScreen>
@@ -179,7 +181,29 @@ class WheelView : public QWidget {
 public:
     int selected=-1;
     bool upper=false, symbol=false;
+    bool l1Down=false,l2Down=false,r1Down=false,r2Down=false,l3Down=false,r3Down=false;
     WheelView() { setMinimumSize(420,360); }
+    void flashFaceButton(int slot) {
+        flashedFaceSlot=slot;
+        faceFlashStarted=SDL_GetTicks();
+        faceFlashActive=true;
+        update();
+    }
+    void flashControllerButton(Uint8 button) {
+        const Uint32 until=SDL_GetTicks()+150;
+        switch(button){
+        case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:l1FlashUntil=until;break;
+        case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:r1FlashUntil=until;break;
+        case SDL_CONTROLLER_BUTTON_LEFTSTICK:l3FlashUntil=until;break;
+        case SDL_CONTROLLER_BUTTON_RIGHTSTICK:r3FlashUntil=until;break;
+        default:break;
+        }
+        update();
+    }
+    void flashTrigger(bool left) {
+        (left?l2FlashUntil:r2FlashUntil)=SDL_GetTicks()+150;
+        update();
+    }
     void paintEvent(QPaintEvent*) override {
         QPainter p(this); p.setRenderHint(QPainter::Antialiasing);
         p.fillRect(rect(), QColor("#111827"));
@@ -200,13 +224,43 @@ public:
             p.setBrush(QColor(i==selected?"#253c55":"#1c2636"));p.drawEllipse(c,petalRadius,petalRadius);
             for(int j=0;j<4;++j){
                 QString text=QString(QChar(layout[i][j]));if(upper&&!symbol)text=text.toUpper();
+                if(i==selected&&faceFlashActive&&j==flashedFaceSlot&&SDL_GetTicks()-faceFlashStarted<140){
+                    p.setPen(QPen(QColor("#66d9ef"),2));p.setBrush(QColor(102,217,239,45));
+                    p.drawEllipse(c+offsets[j],11*scale,11*scale);
+                }
                 p.setPen(colors[j]);p.drawText(QRectF(c+offsets[j]-QPointF(14*scale,14*scale),QSizeF(28*scale,28*scale)),Qt::AlignCenter,text);
             }
         }
         p.setPen(QColor("#dce6f5"));
         p.drawText(QRectF(center-QPointF(67,40),QSizeF(134,80)),Qt::AlignCenter,
                    symbol?"Symbols":upper?"ABC":"abc");
+        auto drawShoulder=[&](const QRectF &r,const QString &label,bool down){
+            p.setPen(QPen(down?QColor("#9cecff"):QColor("#536075"),down?2:1));
+            p.setBrush(down?QColor("#66d9ef"):QColor("#202b3b"));p.drawRoundedRect(r,5,5);
+            p.setPen(down?QColor("#101827"):QColor("#aab7ca"));
+            p.drawText(r,Qt::AlignCenter,label);
+        };
+        const Uint32 now=SDL_GetTicks();
+        auto lit=[now](bool down,Uint32 until){return down||(until&&Sint32(until-now)>0);};
+        const qreal side=12, shoulderWidth=34, shoulderHeight=23, gap=5;
+        drawShoulder(QRectF(side,side,shoulderWidth,shoulderHeight),"L2",lit(l2Down,l2FlashUntil));
+        drawShoulder(QRectF(side,side+shoulderHeight+gap,shoulderWidth,shoulderHeight),"L1",lit(l1Down,l1FlashUntil));
+        drawShoulder(QRectF(width()-side-shoulderWidth,side,shoulderWidth,shoulderHeight),"R1",lit(r1Down,r1FlashUntil));
+        drawShoulder(QRectF(width()-side-shoulderWidth,side+shoulderHeight+gap,shoulderWidth,shoulderHeight),"R2",lit(r2Down,r2FlashUntil));
+        auto drawStick=[&](const QPointF &c,const QString &label,bool down){
+            p.setPen(QPen(down?QColor("#9cecff"):QColor("#536075"),down?2:1));
+            p.setBrush(down?QColor("#66d9ef"):QColor("#202b3b"));p.drawEllipse(c,16,16);
+            p.setPen(down?QColor("#101827"):QColor("#aab7ca"));
+            p.drawText(QRectF(c-QPointF(16,16),QSizeF(32,32)),Qt::AlignCenter,label);
+        };
+        drawStick(QPointF(side+16,height()-side-16),"L3",lit(l3Down,l3FlashUntil));
+        drawStick(QPointF(width()-side-16,height()-side-16),"R3",lit(r3Down,r3FlashUntil));
     }
+private:
+    int flashedFaceSlot=-1;
+    Uint32 faceFlashStarted=0;
+    Uint32 l1FlashUntil=0,l2FlashUntil=0,r1FlashUntil=0,r2FlashUntil=0,l3FlashUntil=0,r3FlashUntil=0;
+    bool faceFlashActive=false;
 };
 
 int main(int argc,char **argv){
@@ -305,11 +359,37 @@ int main(int argc,char **argv){
     auto *windowSettingsLayout=new QFormLayout(windowSettingsGroup);
     auto *controllerSettingsGroup=new QGroupBox("Controller");
     auto *controllerSettingsLayout=new QFormLayout(controllerSettingsGroup);
-    settingsLayout->addWidget(windowSettingsGroup);
-    settingsLayout->addWidget(controllerSettingsGroup);
-    auto *settingsButtons=new QDialogButtonBox(QDialogButtonBox::Close);
+    auto *keyboardSettingsGroup=new QGroupBox("Keyboard");
+    auto *keyboardSettingsLayout=new QVBoxLayout(keyboardSettingsGroup);
+    auto *settingsTabs=new QTabWidget(settingsDialog);
+    settingsTabs->addTab(windowSettingsGroup,"Window");
+    settingsTabs->addTab(controllerSettingsGroup,"Controller");
+    settingsTabs->addTab(keyboardSettingsGroup,"Keyboard");
+    settingsLayout->addWidget(settingsTabs);
+    auto *settingsButtons=new QDialogButtonBox(QDialogButtonBox::Help|QDialogButtonBox::Close);
     QObject::connect(settingsButtons,&QDialogButtonBox::rejected,settingsDialog,&QDialog::hide);
     settingsLayout->addWidget(settingsButtons);
+    QObject::connect(settingsButtons,&QDialogButtonBox::helpRequested,[settingsDialog]{
+        QMessageBox help(QMessageBox::Information,"Daisywheel controls",QString(),QMessageBox::Close,settingsDialog);
+        help.setTextFormat(Qt::RichText);
+        help.setMinimumWidth(480);
+        help.setText(
+            "<h3>Choose and type</h3>"
+            "<p>Move the left stick to select one of the eight petals. Press a face button "
+            "to choose its matching character: A is bottom, B right, X left, and Y top. "
+            "LB switches uppercase; RB switches between letters and symbols.</p>"
+            "<h3>Other controls</h3>"
+            "<p><b>L3</b> inserts a space. <b>R3</b> deletes; hold it to repeat. "
+            "<b>Start</b> inserts Enter. Use your selected controller shortcut to show or hide the keyboard.</p>"
+            "<h3>Mouse mode</h3>"
+            "<p>When enabled, mouse mode only works while the keyboard is visible. Hold <b>LT</b> "
+            "and move the left stick to move the pointer. <b>R1</b> and <b>R2</b> click; "
+            "<b>X/Y</b> or the D-pad scroll. Release LT to return to typing.</p>"
+            "<h3>Window</h3>"
+            "<p>Drag the title area to move Daisywheel. Use the corner grip to resize. "
+            "Settings contains position, transparency, controller, and keyboard options.</p>");
+        help.exec();
+    });
     auto showSettings=[settingsDialog]{settingsDialog->show();settingsDialog->raise();settingsDialog->activateWindow();};
     auto *headerWidget=new QWidget(content);
     auto *header=new QHBoxLayout(headerWidget);
@@ -355,7 +435,7 @@ int main(int argc,char **argv){
     int savedProfileIndex=controllerProfile->findData(savedProfile);
     controllerProfile->setCurrentIndex(savedProfileIndex<0?0:savedProfileIndex);
     controllerSettingsLayout->addRow("Profile",controllerProfile);
-    auto *mouseModeEnabled=new QCheckBox("Mouse mode only while keyboard is open (hold LT)");
+    auto *mouseModeEnabled=new QCheckBox("Enable mouse mode (only while keyboard is open)");
     mouseModeEnabled->setChecked(settings.value("controllerMouseEnabled",savedProfile=="living-room").toBool());
     controllerSettingsLayout->addRow(mouseModeEnabled);
     auto *pointerSpeedLabel=new QLabel;
@@ -465,18 +545,11 @@ int main(int argc,char **argv){
     TouchActivation activation;activation.activate=[=]{view->show();};
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
-    auto *help=new QLabel("Left stick: petal · Face buttons: character · LB: shift · RB: symbols\n"
-                          "When mouse mode is enabled, hold LT: left stick pointer · R1/R2 click · X/Y scroll\n"
-                          "Left stick click: space · Right stick click/hold: backspace · Start: enter · Back: hide\n"
-                          "Open Settings to customize Daisywheel · Tap ≡ or hold the selected shortcut to restore controls");
-    help->setWordWrap(true);
-    help->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Minimum);
-    addControl(help);
-    auto *toggle=new QPushButton("Show / hide wheel");addControl(toggle);
+    auto *toggle=new QPushButton("Show / hide wheel");keyboardSettingsLayout->addWidget(toggle);
     QObject::connect(toggle,&QPushButton::clicked,[=]{view->setVisible(!view->isVisible());});
-    auto *hide=new QPushButton("Hide window · controller shortcut to reopen");addControl(hide);
+    auto *hide=new QPushButton("Hide keyboard");keyboardSettingsLayout->addWidget(hide);
     VisibilityPolicy visibility;
-    QObject::connect(hide,&QPushButton::clicked,[&]{visibility.manual(false);window.hide();});
+    QObject::connect(hide,&QPushButton::clicked,[&]{settingsDialog->hide();visibility.manual(false);window.hide();});
     auto showOverlay=[&]{
         view->show();
         if(windowsMode){
@@ -511,7 +584,7 @@ int main(int argc,char **argv){
         }
 #endif
     };
-    auto *quit=new QPushButton("Quit");addControl(quit);
+    auto *quit=new QPushButton("Quit Daisywheel");keyboardSettingsLayout->addWidget(quit);
     QObject::connect(quit,&QPushButton::clicked,&app,&QApplication::quit);
     std::function<void(Uint32)> haptic;
     auto sendText=[&](const QString &text){
@@ -638,6 +711,7 @@ int main(int argc,char **argv){
                     continue;
                 }
                 if(event.type!=SDL_CONTROLLERBUTTONDOWN||!controller||event.cbutton.which!=SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller)))continue;
+                view->flashControllerButton(event.cbutton.button);
                 if(event.cbutton.button==shortcut->currentData().toInt()) {
                     shortcutButtonDown=true;shortcutPressedAt=SDL_GetTicks();
                     continue;
@@ -667,10 +741,10 @@ int main(int argc,char **argv){
                 // Sample the stick before committing, including movement in this event batch.
                 view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
                 switch(event.cbutton.button){
-                case SDL_CONTROLLER_BUTTON_A:commit(0);break;
-                case SDL_CONTROLLER_BUTTON_B:commit(1);break;
-                case SDL_CONTROLLER_BUTTON_X:commit(2);break;
-                case SDL_CONTROLLER_BUTTON_Y:commit(3);break;
+                case SDL_CONTROLLER_BUTTON_A:view->flashFaceButton(0);commit(0);break;
+                case SDL_CONTROLLER_BUTTON_B:view->flashFaceButton(1);commit(1);break;
+                case SDL_CONTROLLER_BUTTON_X:view->flashFaceButton(2);commit(2);break;
+                case SDL_CONTROLLER_BUTTON_Y:view->flashFaceButton(3);commit(3);break;
                 case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:view->upper=!view->upper;if(haptic)haptic(35);break;
                 case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:view->symbol=!view->symbol;if(haptic)haptic(35);break;
                 case SDL_CONTROLLER_BUTTON_LEFTSTICK:sendText(" ");break;
@@ -744,19 +818,30 @@ int main(int argc,char **argv){
         if(controller&&!pointerMode){
             view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
         }
-        QString statusText=controller?QString("Connected: %1").arg(SDL_GameControllerName(controller)):sdlOk?"Connect a controller":"Controller initialization failed";
+        view->l1Down=controller&&SDL_GameControllerGetButton(controller,SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
+        const bool leftTriggerDown=controller&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
+        if(leftTriggerDown&&!view->l2Down)view->flashTrigger(true);
+        view->l2Down=leftTriggerDown;
+        view->r1Down=controller&&SDL_GameControllerGetButton(controller,SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
+        const bool rightTriggerDown=controller&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERRIGHT)>16000;
+        if(rightTriggerDown&&!view->r2Down)view->flashTrigger(false);
+        view->r2Down=rightTriggerDown;
+        view->l3Down=controller&&SDL_GameControllerGetButton(controller,SDL_CONTROLLER_BUTTON_LEFTSTICK);
+        view->r3Down=controller&&SDL_GameControllerGetButton(controller,SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+        QString statusText=controller?QString(SDL_GameControllerName(controller)):sdlOk?"Connect a controller":"Controller initialization failed";
         if(pointerMode)statusText+=" · Mouse mode";
         if(systemMode&&controller&&hapticsEnabled->isChecked()&&!controllerRumbleAvailable)
             statusText+=" · Controller rumble unavailable";
 #ifdef DAISYWHEEL_KDE
-        if(portalPointer&&!portalPointer->status().isEmpty())statusText+=" · "+portalPointer->status();
+        if(portalPointer&&!portalPointer->status().isEmpty()&&!portalPointer->status().startsWith("Controller mouse ready"))
+            statusText+=" · "+portalPointer->status();
+        if(kde)statusText+=(kde->active()?" · Text field":" · Waiting for text field");
 #endif
         status->setText(statusText);view->update();
 #ifdef Q_OS_WIN
         if(windowsMode && !windowsInput.lastError().isEmpty())status->setText(windowsInput.lastError());
 #endif
 #ifdef DAISYWHEEL_KDE
-        if(kde)status->setText(status->text()+(kde->active()?" · text field active":" · waiting for text field"));
         if(kde && kde->verificationTarget() && app.arguments().contains("--verify-input") && !verificationSent){
             verificationSent=kde->commit("daisywheel-test");
             std::fprintf(stderr,"Daisywheel: verification commit sent=%d\n",verificationSent);
@@ -801,7 +886,6 @@ int main(int argc,char **argv){
         QObject::connect(pin,&QCheckBox::toggled,[&](bool checked){handle->pinned=checked;});
         QObject::connect(pin,&QCheckBox::toggled,[minimalMoveHandle](bool checked){minimalMoveHandle->pinned=checked;});
         window.setAttribute(Qt::WA_ShowWithoutActivating);
-        addControl(new QLabel("Automatic opening follows KDE → Virtual Keyboard\nHome / Back opens manually regardless of that setting"));
         kde->activation=[&](bool active){
             if(!active){visibility.contextEnded();if(!visibility.visible(false,false))window.hide();}
         };
@@ -839,14 +923,14 @@ int main(int argc,char **argv){
         focusWatcher=std::make_unique<WindowsFocus>();
         windowsInput.attach(window);
         handle->setText("Daisywheel · Windows overlay · drag here to move");
-        addControl(new QLabel("Focus a text field, then use your controller shortcut to open"));
+        keyboardSettingsLayout->addWidget(new QLabel("Focus a text field, then use your controller shortcut to open"));
         auto *automatic=new QCheckBox("Open automatically when a text field is selected");
-        automatic->setChecked(settings.value("windowsAutomatic",false).toBool());addControl(automatic);
+        automatic->setChecked(settings.value("windowsAutomatic",false).toBool());keyboardSettingsLayout->addWidget(automatic);
         focusWatcher->setEnabled(automatic->isChecked());
         QObject::connect(automatic,&QCheckBox::toggled,[&](bool enabled){settings.setValue("windowsAutomatic",enabled);focusWatcher->setEnabled(enabled);});
         auto *startup=new QCheckBox("Start Daisywheel when I sign in to Windows");
         QSettings startupSettings("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",QSettings::NativeFormat);
-        startup->setChecked(startupSettings.contains("DaisywheelREAmade"));addControl(startup);
+        startup->setChecked(startupSettings.contains("DaisywheelREAmade"));keyboardSettingsLayout->addWidget(startup);
         QObject::connect(startup,&QCheckBox::toggled,[&](bool enabled){
             QSettings run("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",QSettings::NativeFormat);
             if(enabled)run.setValue("DaisywheelREAmade",QString("\"%1\" --windows-input").arg(QDir::toNativeSeparators(QCoreApplication::applicationFilePath())));

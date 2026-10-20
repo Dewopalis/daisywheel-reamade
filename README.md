@@ -275,7 +275,7 @@ Characters sit at the physical south/east/west/north face-button positions. SDL 
 
 The shortcut dropdown offers Home/Guide, Back/View and Start/Menu. A chosen shortcut takes precedence over that button's typing action. Steam or desktop bindings may also respond to Guide; select another shortcut if needed. Daisywheel does not suppress those other bindings.
 
-Open **Settings** from the title bar to adjust the window and controller options without adding those controls to the keyboard window. **Minimal mode (wheel only)** shrinks the keyboard for handheld screens; its compact bar keeps both **Settings** and **Show controls** available. You can also hold the selected controller shortcut for about a second to restore the full controls.
+The wheel marks L2/L1 and R1/R2 at the top and L3/R3 at the lower sides. A marker lights while its control is held, and a face-button press briefly highlights its matching character. Open **Settings** from the title bar for the **Help** tutorial and window/controller options. Hide, quit, and wheel visibility controls are also in Settings to keep the typing view compact. **Minimal mode (wheel only)** keeps **Settings** and **Show controls** on its compact bar.
 
 ## Opening and appearance
 
@@ -294,8 +294,8 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | Minimal mode | In **Settings**; the compact bar keeps Settings available and **Show controls** restores the full controls |
 | KDE system-mode position | Drag the header or corner to see a translucent window outline preview; position and size apply and save on release |
 | Drag handle / pin toggle | In **Settings**, enable **Pin position** to lock dragging; otherwise drag the header to move |
-| Hide window | Keeps controller handling running |
-| Quit | Stops the process; controller reopening requires relaunch |
+| Hide keyboard | In **Settings**; keeps controller handling running |
+| Quit Daisywheel | In **Settings**; stops the process, so controller reopening requires relaunch |
 
 KWin's `VirtualKeyboard.visible` property describes its native input panel, not this independent overlay; it is not a reliable visibility check for Daisywheel.
 
