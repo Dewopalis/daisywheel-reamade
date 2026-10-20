@@ -4,13 +4,25 @@
 
 Inspired by Steam's original Daisywheel, REAmade lets you select a petal with the left stick and enter its characters with the four face buttons. Open it with your controller on any display, or let KDE's automatic-opening policy decide when it appears.
 
-The goal is a keyboard for Windows handhelds such as the ROG Ally and Linux systems running KDE Plasma, including CachyOS and Steam Deck Desktop Mode.
+It is designed for handheld PCs such as the ROG Ally and Steam Deck, as well as desktop systems running Windows or KDE Plasma on Linux.
 
-![Daisywheel REAmade typing Hello World into KWrite using an Xbox controller](docs/media/hello-world.gif)
+## See it in action
 
-*Controller typing into KWrite on KDE Plasma / Wayland.*
+The examples below show controller typing, automatic opening on text focus,
+Minimal mode with dragging, and the transparency control.
 
-**Current status: Linux/KDE Wayland and Windows prototypes.** Controller typing into another application has been confirmed on both development PCs. The v0.1.0 Windows and Linux packages are published on GitHub Releases. Windows sign-in startup, broader application compatibility, handheld hardware and Steam Deck Gaming Mode still need validation.
+| Controller typing | Opens on text focus |
+| --- | --- |
+| <img src="docs/media/hello-world.gif" alt="Controller typing Hello World into KWrite on KDE Plasma and Wayland" width="420"> | <img src="docs/media/focus-popup.gif" alt="Daisywheel opening when a text field is selected" width="420"> |
+
+| Minimal mode and dragging | Transparency control |
+| --- | --- |
+| <img src="docs/media/minimal-mode-dragging.gif" alt="Dragging the Daisywheel overlay in Minimal mode" width="420"> | <img src="docs/media/transparency-slider.gif" alt="Adjusting the Daisywheel transparency slider" width="420"> |
+
+**Current status:** controller typing works in other applications on the
+development PCs running Windows and KDE Plasma / Wayland. Version [v0.1.0](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.1.0)
+is published. Touchscreen devices, broader application compatibility and Steam
+Deck Gaming Mode still need testing.
 
 ## Open source and contributing
 
@@ -61,7 +73,7 @@ instructions below remain available for developers.
 | CachyOS / Arch-based KDE distributions | Installation instructions below; more device testing needed |
 | Steam Deck Desktop Mode | Intended target; not yet tested on the device |
 | Steam Deck Gaming Mode | Separate integration planned for investigation |
-| Windows 11 | Controller typing confirmed; UI Automation field detection tested with native and Qt controls on `windows-integration` |
+| Windows 11 | Controller typing confirmed; UI Automation field detection tested with native and Qt controls |
 | GNOME, other Wayland desktops, X11 | System-keyboard integration not supported yet |
 
 ## Install on CachyOS / Arch Linux with KDE
@@ -278,44 +290,20 @@ rm -- "$HOME/.local/bin/daisywheel-reamade"
 kbuildsycoca6 --noincremental
 ```
 
-## Where we are now
-
-Confirmed on the development PC:
-
-- Xbox Series X controller detected and mapped through SDL.
-- Petal selection and typing in the local test field.
-- Controller shortcuts showing and hiding the keyboard.
-- Controller-driven typing into another application on KDE Wayland.
-- Overlay rendering without acquiring keyboard focus; opacity control implemented.
-- Resizable window with a corner drag grip and a smaller default wheel footprint.
-- Registration in KDE Virtual Keyboard settings and launch through KWin.
-- Automated checks for stick selection, character slots and automatic/manual visibility rules.
-- v0.1.0 Windows setup/portable packages, Debian DEB, Fedora RPM and Linux AppImage built by CI; package installation or startup checks passed in the release workflow.
-
-Implemented, with more live validation needed:
-
-- KDE-controlled automatic opening, especially on real touch/tablet hardware.
-- Backspace and Enter across applications and toolkits.
-- Reboot startup, controller reconnection and multiple-display behavior.
-
-Current limits include a provisional English layout, compatibility dependent on a usable application input context, and controller events potentially reaching the target app as well as the wheel. There is no prediction, repeat-on-hold, configurable deadzone or full controller remapping yet. Windows automatic-opening compatibility still needs testing across more applications; Steam Deck Gaming Mode remains a separate investigation.
-
 ## Roadmap
 
-- [x] Move, pin and resize the KDE system overlay with saved position and size.
-- [x] Resize the application by dragging its corner grip; compact handheld tuning remains planned.
-- [x] Wheel-only Minimal mode with a smaller window footprint.
-- [ ] Further compact-layout tuning for handheld screens.
-- [ ] Validate touch/tablet opening and all KDE opening policies on hardware.
-- [ ] Validate reboot startup, reconnects and multiple displays.
-- [ ] Test browsers, editors and XWayland applications.
-- [ ] Configurable controller mappings, deadzones and repeat behavior.
-- [ ] Additional languages, layouts and controller-specific button labels.
-- [ ] Validate the Windows input backend across more applications and controller hardware; text/control delivery and focus preservation are implemented.
-- [ ] Validate Windows UI Automation automatic opening in browsers and more applications; native/Qt detection, manual activation and opt-in startup are implemented.
-- [x] Automated Linux and Windows package builds, package checks and draft-release creation.
-- [x] Review and publish the v0.1.0 release.
-- [ ] Test the published packages on supported handheld hardware, including Steam Deck Desktop Mode and ROG Ally.
+- [x] Controller typing, manual show/hide shortcuts and text delivery to other applications on Windows and KDE Plasma / Wayland.
+- [x] KDE Virtual Keyboard integration, including KDE-controlled automatic opening.
+- [x] Windows UI Automation text-field detection and optional sign-in startup.
+- [x] Move, pin and resize the overlay; Minimal mode and adjustable transparency.
+- [x] Build and publish v0.1.0 packages for Windows and Linux; CI checks packages and prepares draft releases for future tags.
+- [ ] Validate touch/tablet opening and KDE keyboard policies on supported hardware.
+- [ ] Test sign-in/reboot startup, controller reconnection and multiple displays on target systems.
+- [ ] Broaden compatibility testing across browsers, editors and XWayland applications on Linux, and more applications and controllers on Windows.
+- [ ] Tune the compact layout for handheld screens and controls.
+- [ ] Add configurable controller mappings, deadzones and repeat behavior.
+- [ ] Add more languages, layouts and controller-specific button labels.
+- [ ] Test published packages on handhelds, including Steam Deck Desktop Mode and ROG Ally.
 - [ ] Investigate Steam Deck Gaming Mode separately.
 
 Windows uses its own activation and input backend. Microsoft's IME API does not provide a general independent replacement touch keyboard; see [Microsoft's IME documentation](https://learn.microsoft.com/en-gb/windows/apps/design/input/input-method-editors).
