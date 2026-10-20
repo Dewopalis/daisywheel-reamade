@@ -393,7 +393,7 @@ int main(int argc,char **argv){
             "<b>Start</b> inserts Enter. Use your selected controller shortcut to show or hide the keyboard.</p>"
             "<h3>Mouse mode</h3>"
             "<p>When enabled, mouse mode only works while the keyboard is visible. Hold <b>LT</b> "
-            "and move the left stick to move the pointer. <b>R1</b> and <b>R2</b> click; "
+            "and move the left stick to move the pointer. <b>R1</b> clicks and <b>R2</b> right-clicks; "
             "<b>X/Y</b> or the D-pad scroll. Release LT to return to typing.</p>"
             "<h3>Window</h3>"
             "<p>Drag the title area to move Daisywheel. Use the corner grip to resize. "

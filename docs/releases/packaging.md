@@ -38,7 +38,7 @@ The hosted v0.2.0 package workflow passes its CI installation and startup checks
 manual testing on target systems is still needed before promising broader device
 or application compatibility. Windows and Linux packages are currently unsigned.
 
-## Create a future release
+## Create a release
 
 1. Merge packaging changes and check all `Build packages` jobs on `main`.
 2. Update `project(Daisywheel VERSION ...)` in `CMakeLists.txt`, commit, and merge.
@@ -47,12 +47,12 @@ or application compatibility. Windows and Linux packages are currently unsigned.
    ```bash
    git switch main
    git pull --ff-only origin main
-   git tag v0.1.1
-   git push origin v0.1.1
+   git tag v0.3.0
+   git push origin v0.3.0
    ```
 
-   Replace `v0.2.1` with the release version set in `CMakeLists.txt`. The
-   `v0.2.0` release is already tagged. Prerelease suffixes are not supported.
+   Use the same `vMAJOR.MINOR.PATCH` version as `CMakeLists.txt`. The current
+   development version is `0.3.0`; prerelease suffixes are not supported.
 4. Wait for Windows, DEB/AppImage and RPM jobs to succeed. The tag must match
    the CMake version.
 5. Open the draft under GitHub Releases. Download and test the actual installer,
@@ -110,7 +110,7 @@ ctest --test-dir build-ci --output-on-failure
 DESTDIR="$PWD/work/staging" cmake --install build-ci
 cpack --config build-ci/CPackConfig.cmake -G DEB -B dist  # Debian build host
 cpack --config build-ci/CPackConfig.cmake -G RPM -B dist  # Fedora build host
-bash scripts/package-appimage.sh 0.2.0 build-ci
+bash scripts/package-appimage.sh 0.3.0 build-ci
 ```
 
 Native packages must be built in their corresponding distro environment;
