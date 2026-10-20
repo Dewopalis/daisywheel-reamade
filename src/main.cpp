@@ -374,7 +374,9 @@ int main(int argc,char **argv){
     auto *settingsTabs=new QTabWidget(settingsDialog);
     settingsTabs->addTab(windowSettingsGroup,"Window");
     settingsTabs->addTab(controllerSettingsGroup,"Controller");
-    settingsTabs->addTab(keyboardSettingsGroup,"Keyboard");
+#ifdef Q_OS_WIN
+    if(windowsMode)settingsTabs->addTab(keyboardSettingsGroup,"Keyboard");
+#endif
     settingsLayout->addWidget(settingsTabs);
     auto *settingsButtons=new QDialogButtonBox(QDialogButtonBox::Help|QDialogButtonBox::Close);
     QObject::connect(settingsButtons,&QDialogButtonBox::rejected,settingsDialog,&QDialog::hide);
@@ -390,14 +392,14 @@ int main(int argc,char **argv){
             "LB switches uppercase; RB switches between letters and symbols.</p>"
             "<h3>Other controls</h3>"
             "<p><b>L3</b> inserts a space. <b>R3</b> deletes; hold it to repeat. "
-            "<b>Start</b> inserts Enter. Use your selected controller shortcut to show or hide the keyboard.</p>"
+            "<b>Start</b> inserts Enter. Set the show/hide shortcut in Controller settings by pressing any mapped controller button.</p>"
             "<h3>Mouse mode</h3>"
             "<p>When enabled, mouse mode only works while the keyboard is visible. Hold <b>LT</b> "
             "and move the left stick to move the pointer. <b>R1</b> clicks and <b>R2</b> right-clicks; "
             "<b>X/Y</b> or the D-pad scroll. Release LT to return to typing.</p>"
             "<h3>Window</h3>"
             "<p>Drag the title area to move Daisywheel. Use the corner grip to resize. "
-            "Settings contains position, transparency, controller, and keyboard options.</p>");
+            "Settings contains position, transparency, and controller options.</p>");
         help.exec();
     });
     auto showSettings=[settingsDialog]{settingsDialog->show();settingsDialog->raise();settingsDialog->activateWindow();};
@@ -439,6 +441,17 @@ int main(int argc,char **argv){
     auto *alpha=new QGraphicsOpacityEffect(content);content->setGraphicsEffect(alpha);
     auto setOpacity=[&](int value){alpha->setOpacity(value/100.0);opacityLabel->setText(QString("Opacity: %1%").arg(value));settings.setValue("opacity",value);};
     setOpacity(opacity->value());QObject::connect(opacity,&QSlider::valueChanged,setOpacity);
+    VisibilityPolicy visibility;
+    auto *sessionGroup=new QGroupBox("Daisywheel");
+    auto *sessionLayout=new QVBoxLayout(sessionGroup);
+    auto *hide=new QPushButton("Hide keyboard");
+    hide->setToolTip("Hide the wheel and its overlay window. Use the controller shortcut to show it again.");
+    sessionLayout->addWidget(hide);
+    auto *quit=new QPushButton("Quit Daisywheel");
+    sessionLayout->addWidget(quit);
+    windowSettingsLayout->addRow(sessionGroup);
+    QObject::connect(hide,&QPushButton::clicked,[&]{settingsDialog->hide();visibility.manual(false);window.hide();});
+    QObject::connect(quit,&QPushButton::clicked,&app,&QApplication::quit);
     auto *controllerProfile=new QComboBox;
     controllerProfile->addItem("Handheld", "handheld");
     controllerProfile->addItem("Living room / desktop", "living-room");
@@ -502,13 +515,39 @@ int main(int argc,char **argv){
     };
     setPointerSpeed(pointerSpeed->value());
     QObject::connect(pointerSpeed,&QSlider::valueChanged,setPointerSpeed);
-    auto *shortcut=new QComboBox;
-    shortcut->addItem("Home / Guide",SDL_CONTROLLER_BUTTON_GUIDE);
-    shortcut->addItem("Back / View",SDL_CONTROLLER_BUTTON_BACK);
-    shortcut->addItem("Start / Menu",SDL_CONTROLLER_BUTTON_START);
-    int shortcutIndex=shortcut->findData(settings.value("shortcut",SDL_CONTROLLER_BUTTON_GUIDE));
-    shortcut->setCurrentIndex(shortcutIndex<0?0:shortcutIndex);controllerSettingsLayout->addRow("Controller shortcut",shortcut);
-    QObject::connect(shortcut,&QComboBox::currentIndexChanged,[&](int){settings.setValue("shortcut",shortcut->currentData());});
+    int shortcutButton=settings.value("shortcut",SDL_CONTROLLER_BUTTON_GUIDE).toInt();
+    if(shortcutButton<0||shortcutButton>=SDL_CONTROLLER_BUTTON_MAX)shortcutButton=SDL_CONTROLLER_BUTTON_GUIDE;
+    auto controllerButtonName=[](int button){
+        const char *name=SDL_GameControllerGetStringForButton(static_cast<SDL_GameControllerButton>(button));
+        if(!name)return QString("Button %1").arg(button+1);
+        QString result=QString::fromUtf8(name);
+        if(!result.isEmpty())result[0]=result[0].toUpper();
+        return result;
+    };
+    auto *shortcutName=new QLabel(controllerButtonName(shortcutButton));
+    auto *captureShortcutButton=new QPushButton("Choose on controller…");
+    captureShortcutButton->setToolTip("Press any mapped button on the connected controller to use it as the show/hide shortcut");
+    auto *shortcutRow=new QWidget;
+    auto *shortcutRowLayout=new QHBoxLayout(shortcutRow);
+    shortcutRowLayout->setContentsMargins(0,0,0,0);
+    shortcutRowLayout->addWidget(shortcutName,1);
+    shortcutRowLayout->addWidget(captureShortcutButton);
+    controllerSettingsLayout->addRow("Show / hide shortcut",shortcutRow);
+    bool capturingShortcut=false;
+    auto updateShortcutCapture=[&](bool active){
+        capturingShortcut=active;
+        captureShortcutButton->setText(active?"Cancel":"Choose on controller…");
+        shortcutName->setText(active?"Press a mapped controller button…":controllerButtonName(shortcutButton));
+    };
+    QObject::connect(captureShortcutButton,&QPushButton::clicked,[&]{updateShortcutCapture(!capturingShortcut);});
+    auto *invertScrolling=new QCheckBox("Invert scroll direction");
+    invertScrolling->setChecked(settings.value("invertScrolling",false).toBool());
+    invertScrolling->setToolTip("Reverse the direction used by the D-pad and X/Y buttons while mouse mode is active");
+    invertScrolling->setVisible(systemMode);
+    invertScrolling->setEnabled(mouseModeEnabled->isChecked());
+    controllerSettingsLayout->addRow("Living room scrolling",invertScrolling);
+    QObject::connect(invertScrolling,&QCheckBox::toggled,[&](bool enabled){settings.setValue("invertScrolling",enabled);});
+    QObject::connect(mouseModeEnabled,&QCheckBox::toggled,invertScrolling,&QWidget::setEnabled);
     auto *status=new QLabel;
     status->setWordWrap(true);
     status->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Minimum);
@@ -560,11 +599,6 @@ int main(int argc,char **argv){
     TouchActivation activation;activation.activate=[=]{view->show();};
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
-    auto *toggle=new QPushButton("Show / hide wheel");keyboardSettingsLayout->addWidget(toggle);
-    QObject::connect(toggle,&QPushButton::clicked,[=]{view->setVisible(!view->isVisible());});
-    auto *hide=new QPushButton("Hide keyboard");keyboardSettingsLayout->addWidget(hide);
-    VisibilityPolicy visibility;
-    QObject::connect(hide,&QPushButton::clicked,[&]{settingsDialog->hide();visibility.manual(false);window.hide();});
     auto showOverlay=[&]{
         view->show();
         if(windowsMode){
@@ -599,8 +633,6 @@ int main(int argc,char **argv){
         }
 #endif
     };
-    auto *quit=new QPushButton("Quit Daisywheel");keyboardSettingsLayout->addWidget(quit);
-    QObject::connect(quit,&QPushButton::clicked,&app,&QApplication::quit);
     std::function<void(Uint32)> haptic;
     auto sendText=[&](const QString &text){
 #ifdef Q_OS_WIN
@@ -722,6 +754,7 @@ int main(int argc,char **argv){
                     if(kde&&window.windowHandle())window.windowHandle()->setFlag(Qt::WindowTransparentForInput,false);
 #endif
                     SDL_GameControllerClose(controller);controller=nullptr;controllerRumbleAvailable=true;view->selected=-1;shortcutButtonDown=false;backspaceHeld=false;backspaceRepeatTimer.stop();backspaceRepeatTimer.setSingleShot(true);pointerMode=false;
+                    if(capturingShortcut)updateShortcutCapture(false);
                 }
                 if(event.type==SDL_CONTROLLERBUTTONUP&&controller&&event.cbutton.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))){
                     if(event.cbutton.button==SDL_CONTROLLER_BUTTON_RIGHTSTICK){
@@ -731,7 +764,7 @@ int main(int argc,char **argv){
                         pointerButton(event.cbutton.button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,false);
                         heldPointerButtons.removeAll(event.cbutton.button);
                     }
-                    if(event.cbutton.button==shortcut->currentData().toInt()&&shortcutButtonDown){
+                    if(event.cbutton.button==shortcutButton&&shortcutButtonDown){
                         const Uint32 held=SDL_GetTicks()-shortcutPressedAt;
                         if(minimalActive&&window.isVisible()&&held>=800)minimalMode->setChecked(false);
                         else if(systemMode)manualToggle();
@@ -743,14 +776,17 @@ int main(int argc,char **argv){
                 }
                 if(event.type!=SDL_CONTROLLERBUTTONDOWN||!controller||event.cbutton.which!=SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller)))continue;
                 view->flashControllerButton(event.cbutton.button);
-                if(event.cbutton.button==shortcut->currentData().toInt()) {
+                if(capturingShortcut){
+                    shortcutButton=event.cbutton.button;
+                    settings.setValue("shortcut",shortcutButton);
+                    shortcutButtonDown=false;
+                    updateShortcutCapture(false);
+                    continue;
+                }
+                if(event.cbutton.button==shortcutButton) {
                     shortcutButtonDown=true;shortcutPressedAt=SDL_GetTicks();
                     continue;
                 }
-                if(windowsMode && event.cbutton.button==SDL_CONTROLLER_BUTTON_BACK){manualToggle();continue;}
-#ifdef DAISYWHEEL_KDE
-                if(kde && event.cbutton.button==SDL_CONTROLLER_BUTTON_BACK){manualToggle();continue;}
-#endif
                 const bool mouseModifier=systemMode&&window.isVisible()&&view->isVisible()&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
                 if(mouseModifier){
                     switch(event.cbutton.button){
@@ -759,10 +795,10 @@ int main(int argc,char **argv){
                         if(!heldPointerButtons.contains(event.cbutton.button))heldPointerButtons.append(event.cbutton.button);
                         if(haptic)haptic(35);
                         break;
-                    case SDL_CONTROLLER_BUTTON_X:pointerScroll(1);if(haptic)haptic(25);break;
-                    case SDL_CONTROLLER_BUTTON_Y:pointerScroll(-1);if(haptic)haptic(25);break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_UP:pointerScroll(3);if(haptic)haptic(25);break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN:pointerScroll(-3);if(haptic)haptic(25);break;
+                    case SDL_CONTROLLER_BUTTON_X:pointerScroll(invertScrolling->isChecked()?-1:1);if(haptic)haptic(25);break;
+                    case SDL_CONTROLLER_BUTTON_Y:pointerScroll(invertScrolling->isChecked()?1:-1);if(haptic)haptic(25);break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_UP:pointerScroll(invertScrolling->isChecked()?-3:3);if(haptic)haptic(25);break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN:pointerScroll(invertScrolling->isChecked()?3:-3);if(haptic)haptic(25);break;
                     default:break;
                     }
                     continue;
@@ -788,13 +824,9 @@ int main(int argc,char **argv){
                     break;
                 case SDL_CONTROLLER_BUTTON_START:sendControl(false);break;
                 case SDL_CONTROLLER_BUTTON_BACK:
-#ifdef DAISYWHEEL_KDE
-                    if(kde){
-                        manualToggle();
-                        break;
-                    }
-#endif
-                    view->hide();break;
+                    if(systemMode){settingsDialog->hide();visibility.manual(false);window.hide();}
+                    else view->hide();
+                    break;
                 default:break;
                 }
             }
