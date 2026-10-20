@@ -49,28 +49,32 @@ void PortalPointer::setStatus(const QString &status){
 
 void PortalPointer::callRequest(const QString &method,const QVariantList &arguments,
                                 std::function<void(uint,const QVariantMap &)> response){
+    const QString requestToken=arguments.isEmpty()?QString():arguments.last().toMap().value("handle_token").toString();
+    QString sender=QDBusConnection::sessionBus().baseService();
+    if(sender.startsWith(':'))sender.remove(0,1);
+    sender.replace(':','_');sender.replace('.','_');
+    const QString requestPath=QString("%1/request/%2/%3").arg(portalPath,sender,requestToken);
+    auto *signalReceiver=new PortalResponse(std::move(response),this);
+    const bool connected=QDBusConnection::sessionBus().connect(
+        portalService,requestPath,requestInterface,"Response",signalReceiver,
+        SLOT(response(uint,QVariantMap)));
+    if(!connected){
+        signalReceiver->deleteLater();
+        isRequesting=false;
+        setStatus("Could not monitor KDE pointer permission response");
+        return;
+    }
     QDBusMessage call=QDBusMessage::createMethodCall(
         portalService,portalPath,remoteDesktopInterface,method);
     call.setArguments(arguments);
     auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call),this);
-    connect(watcher,&QDBusPendingCallWatcher::finished,this,
-            [this,watcher,response=std::move(response)]() mutable {
+    connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,signalReceiver]{
         QDBusPendingReply<QDBusObjectPath> reply=*watcher;
         watcher->deleteLater();
         if(reply.isError()){
-            isRequesting=false;
-            setStatus(QString("Pointer permission unavailable: %1").arg(reply.error().message()));
-            return;
-        }
-        const QString requestPath=reply.value().path();
-        auto *signalReceiver=new PortalResponse(std::move(response),this);
-        const bool connected=QDBusConnection::sessionBus().connect(
-            portalService,requestPath,requestInterface,"Response",signalReceiver,
-            SLOT(response(uint,QVariantMap)));
-        if(!connected){
             signalReceiver->deleteLater();
             isRequesting=false;
-            setStatus("Could not monitor KDE pointer permission response");
+            setStatus(QString("Pointer permission unavailable: %1").arg(reply.error().message()));
         }
     });
 }
