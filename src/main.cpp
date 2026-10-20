@@ -23,6 +23,8 @@
 #include <QComboBox>
 #include <QGraphicsOpacityEffect>
 #include <QTabWidget>
+#include <QScrollArea>
+#include <QFrame>
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include <QScreen>
@@ -360,29 +362,36 @@ int main(int argc,char **argv){
     const int fullContentSpacing=box->spacing();
     QList<QWidget*> fullModeWidgets;
     auto addControl=[&](QWidget *control){box->addWidget(control);fullModeWidgets.append(control);return control;};
-    auto *settingsDialog=new QDialog(&window);
-    settingsDialog->setWindowTitle("Daisywheel settings");
-    settingsDialog->setWindowFlag(Qt::WindowStaysOnTopHint,true);
-    settingsDialog->setMinimumWidth(380);
-    auto *settingsLayout=new QVBoxLayout(settingsDialog);
+    auto *settingsPanel=new QWidget(content);
+    settingsPanel->setMinimumWidth(360);
+    auto *settingsLayout=new QVBoxLayout(settingsPanel);
+    auto *settingsHeader=new QHBoxLayout;
+    auto *settingsTitle=new QLabel("Daisywheel settings");
+    settingsHeader->addWidget(settingsTitle,1);
+    auto *helpButton=new QPushButton("Help");
+    settingsHeader->addWidget(helpButton);
+    auto *backToKeyboardButton=new QPushButton("Back to keyboard");
+    settingsHeader->addWidget(backToKeyboardButton);
+    settingsLayout->addLayout(settingsHeader);
     auto *windowSettingsGroup=new QGroupBox("Window");
     auto *windowSettingsLayout=new QFormLayout(windowSettingsGroup);
     auto *controllerSettingsGroup=new QGroupBox("Controller");
     auto *controllerSettingsLayout=new QFormLayout(controllerSettingsGroup);
     auto *keyboardSettingsGroup=new QGroupBox("Keyboard");
     auto *keyboardSettingsLayout=new QVBoxLayout(keyboardSettingsGroup);
-    auto *settingsTabs=new QTabWidget(settingsDialog);
+    auto *settingsTabs=new QTabWidget(settingsPanel);
     settingsTabs->addTab(windowSettingsGroup,"Window");
     settingsTabs->addTab(controllerSettingsGroup,"Controller");
 #ifdef Q_OS_WIN
     if(windowsMode)settingsTabs->addTab(keyboardSettingsGroup,"Keyboard");
 #endif
-    settingsLayout->addWidget(settingsTabs);
-    auto *settingsButtons=new QDialogButtonBox(QDialogButtonBox::Help|QDialogButtonBox::Close);
-    QObject::connect(settingsButtons,&QDialogButtonBox::rejected,settingsDialog,&QDialog::hide);
-    settingsLayout->addWidget(settingsButtons);
-    QObject::connect(settingsButtons,&QDialogButtonBox::helpRequested,[settingsDialog]{
-        QMessageBox help(QMessageBox::Information,"Daisywheel controls",QString(),QMessageBox::Close,settingsDialog);
+    auto *settingsScroll=new QScrollArea(settingsPanel);
+    settingsScroll->setWidgetResizable(true);
+    settingsScroll->setFrameShape(QFrame::NoFrame);
+    settingsScroll->setWidget(settingsTabs);
+    settingsLayout->addWidget(settingsScroll,1);
+    QObject::connect(helpButton,&QPushButton::clicked,[&window]{
+        QMessageBox help(QMessageBox::Information,"Daisywheel controls",QString(),QMessageBox::Close,&window);
         help.setTextFormat(Qt::RichText);
         help.setMinimumWidth(480);
         help.setText(
@@ -402,7 +411,9 @@ int main(int argc,char **argv){
             "Settings contains position, transparency, and controller options.</p>");
         help.exec();
     });
-    auto showSettings=[settingsDialog]{settingsDialog->show();settingsDialog->raise();settingsDialog->activateWindow();};
+    settingsPanel->hide();
+    std::function<void()> showSettings;
+    std::function<void()> showKeyboard;
     auto *headerWidget=new QWidget(content);
     auto *header=new QHBoxLayout(headerWidget);
     header->setContentsMargins(0,0,0,0);
@@ -411,7 +422,7 @@ int main(int argc,char **argv){
     header->addWidget(resizeHandle);
     auto *handle=new MoveHandle("Daisywheel · drag here to move");header->addWidget(handle,1);
     auto *settingsButton=new QPushButton("Settings");settingsButton->setFixedHeight(26);
-    header->addWidget(settingsButton);QObject::connect(settingsButton,&QPushButton::clicked,showSettings);
+    header->addWidget(settingsButton);QObject::connect(settingsButton,&QPushButton::clicked,[&]{if(showSettings)showSettings();});
     addControl(headerWidget);
     auto *pin=new QCheckBox("Pin position (lock dragging)");
     pin->setChecked(settings.value("pinned",false).toBool());handle->pinned=pin->isChecked();windowSettingsLayout->addRow(pin);
@@ -450,7 +461,11 @@ int main(int argc,char **argv){
     auto *quit=new QPushButton("Quit Daisywheel");
     sessionLayout->addWidget(quit);
     windowSettingsLayout->addRow(sessionGroup);
-    QObject::connect(hide,&QPushButton::clicked,[&]{settingsDialog->hide();visibility.manual(false);window.hide();});
+    QObject::connect(hide,&QPushButton::clicked,[&]{
+        if(showKeyboard)showKeyboard();
+        visibility.manual(false);
+        window.hide();
+    });
     QObject::connect(quit,&QPushButton::clicked,&app,&QApplication::quit);
     auto *controllerProfile=new QComboBox;
     controllerProfile->addItem("Handheld", "handheld");
@@ -585,14 +600,31 @@ int main(int argc,char **argv){
     minimalSettingsButton->setAccessibleName("Open Daisywheel settings");
     minimalSettingsButton->setFixedSize(68,26);
     minimalBarLayout->addWidget(minimalSettingsButton);
-    QObject::connect(minimalSettingsButton,&QPushButton::clicked,showSettings);
+    QObject::connect(minimalSettingsButton,&QPushButton::clicked,[&]{if(showSettings)showSettings();});
     auto *restoreControls=new QPushButton("Show controls",minimalBar);
     restoreControls->setToolTip("Show full controls");
     restoreControls->setAccessibleName("Show full controls");
     restoreControls->setFixedSize(96,26);
     minimalBarLayout->addWidget(restoreControls);
     box->insertWidget(box->indexOf(view),minimalBar);
+    box->addWidget(settingsPanel,1);
     minimalBar->hide();
+    showSettings=[&]{
+        for(auto *control:fullModeWidgets)control->hide();
+        view->hide();
+        minimalBar->hide();
+        settingsPanel->show();
+        window.setWindowTitle("Daisywheel settings");
+    };
+    showKeyboard=[&]{
+        settingsPanel->hide();
+        window.setWindowTitle("Daisywheel — controller prototype");
+        for(auto *control:fullModeWidgets)
+            control->setVisible(!minimalActive&&(control!=editor||!systemMode));
+        view->setVisible(!minimalActive);
+        minimalBar->setVisible(minimalActive);
+    };
+    QObject::connect(backToKeyboardButton,&QPushButton::clicked,[&]{if(showKeyboard)showKeyboard();});
     QObject::connect(restoreControls,&QPushButton::clicked,[&]{minimalMode->setChecked(false);});
     minimalMoveHandle->pinned=pin->isChecked();
     QObject::connect(pin,&QCheckBox::toggled,[minimalMoveHandle](bool checked){minimalMoveHandle->pinned=checked;});
@@ -625,7 +657,8 @@ int main(int argc,char **argv){
     };
     auto manualToggle=[&]{
         bool show=!window.isVisible();visibility.manual(show);
-        if(show)showOverlay();else window.hide();
+        if(show){if(showKeyboard)showKeyboard();showOverlay();}
+        else {if(showKeyboard)showKeyboard();window.hide();}
 #ifdef DAISYWHEEL_KDE
         if(show && kde){
             QDBusInterface keyboard("org.kde.KWin","/VirtualKeyboard","org.kde.kwin.VirtualKeyboard");
@@ -766,10 +799,10 @@ int main(int argc,char **argv){
                     }
                     if(event.cbutton.button==shortcutButton&&shortcutButtonDown){
                         const Uint32 held=SDL_GetTicks()-shortcutPressedAt;
-                        if(minimalActive&&window.isVisible()&&held>=800)minimalMode->setChecked(false);
+                        if(minimalActive&&window.isVisible()&&view->isVisible()&&held>=800)minimalMode->setChecked(false);
                         else if(systemMode)manualToggle();
-                        else if(window.isVisible()&&view->isVisible())window.hide();
-                        else {view->show();window.show();}
+                        else if(window.isVisible()){if(showKeyboard)showKeyboard();window.hide();}
+                        else {if(showKeyboard)showKeyboard();view->show();window.show();}
                         shortcutButtonDown=false;
                     }
                     continue;
@@ -804,7 +837,7 @@ int main(int argc,char **argv){
                     continue;
                 }
                 if(!window.isVisible())continue;
-                if(!view->isVisible()){if(event.cbutton.button==SDL_CONTROLLER_BUTTON_BACK)view->show();continue;}
+                if(!view->isVisible())continue;
                 // Sample the stick before committing, including movement in this event batch.
                 view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
                 switch(event.cbutton.button){
@@ -823,10 +856,6 @@ int main(int argc,char **argv){
                     backspaceRepeatTimer.start();
                     break;
                 case SDL_CONTROLLER_BUTTON_START:sendControl(false);break;
-                case SDL_CONTROLLER_BUTTON_BACK:
-                    if(systemMode){settingsDialog->hide();visibility.manual(false);window.hide();}
-                    else view->hide();
-                    break;
                 default:break;
                 }
             }
