@@ -20,6 +20,13 @@ QString token(){
     return QString::number(QRandomGenerator::global()->generate64(),16);
 }
 
+QVariant portalValue(const QVariantMap &results,const QString &key){
+    QVariant value=results.value(key);
+    while(value.metaType().id()==qMetaTypeId<QDBusVariant>())
+        value=value.value<QDBusVariant>().variant();
+    return value;
+}
+
 class PortalResponse : public QObject {
     Q_OBJECT
 public:
@@ -100,7 +107,9 @@ void PortalPointer::createSession(){
             setStatus("KDE did not create a pointer session");
             return;
         }
-        sessionHandle=results.value("session_handle").value<QDBusObjectPath>().path();
+        const QVariant handle=portalValue(results,"session_handle");
+        if(handle.canConvert<QDBusObjectPath>())sessionHandle=handle.value<QDBusObjectPath>().path();
+        else sessionHandle=handle.toString();
         if(sessionHandle.isEmpty()){
             isRequesting=false;
             setStatus("KDE returned an invalid pointer session");
@@ -134,13 +143,13 @@ void PortalPointer::startSession(){
     callRequest("Start",{QDBusObjectPath(sessionHandle),QString(),options},
                 [this](uint code,const QVariantMap &results){
         isRequesting=false;
-        if(code!=0 || !(results.value("devices").toUInt()&uint(2))){
+        if(code!=0 || !(portalValue(results,"devices").toUInt()&uint(2))){
             setStatus("KDE did not grant pointer control");
             closeSession();
             return;
         }
         isActive=true;
-        const QString restore=results.value("restore_token").toString();
+        const QString restore=portalValue(results,"restore_token").toString();
         if(!restore.isEmpty()){
             savedRestoreToken=restore;
             if(restoreTokenChanged)restoreTokenChanged(restore);
