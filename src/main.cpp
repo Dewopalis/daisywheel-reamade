@@ -1,4 +1,5 @@
 #include "wheel.h"
+#include "overlaywidgets.h"
 #include "visibility.h"
 #include "placement.h"
 #include "soundeffects.h"
@@ -51,231 +52,6 @@
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
 #endif
-
-class MoveHandle : public QLabel {
-public:
-    bool pinned=false;
-    std::function<void(const QRect &)> geometryChanged;
-    std::function<void(const QRect &)> geometryCommitted;
-    std::function<QRect()> geometryProvider;
-    std::function<void(const QRect &)> geometryPreview;
-    using QLabel::QLabel;
-    void mousePressEvent(QMouseEvent *event) override {
-        if(pinned || event->button()!=Qt::LeftButton)return;
-        origin=event->globalPosition().toPoint();initialGeometry=geometryProvider?geometryProvider():window()->geometry();dragging=true;
-        if(!geometryChanged && window()->windowHandle())window()->windowHandle()->startSystemMove();
-        event->accept();
-    }
-    void mouseMoveEvent(QMouseEvent *event) override {
-        if(!dragging || pinned){QLabel::mouseMoveEvent(event);return;}
-        pendingGeometry=initialGeometry.translated(event->globalPosition().toPoint()-origin);
-        if(geometryPreview)geometryPreview(pendingGeometry);
-        event->accept();
-    }
-    void mouseReleaseEvent(QMouseEvent *event) override {
-        if(event->button()==Qt::LeftButton){
-            if(dragging && !pinned && geometryChanged){
-                const QRect finalGeometry=initialGeometry.translated(event->globalPosition().toPoint()-origin);
-                geometryChanged(finalGeometry);
-                if(geometryCommitted)geometryCommitted(finalGeometry);
-            }
-            if(geometryPreview)geometryPreview(QRect());
-            dragging=false;event->accept();return;
-        }
-        QLabel::mouseReleaseEvent(event);
-    }
-private:
-    bool dragging=false;
-    QPoint origin;
-    QRect initialGeometry;
-    QRect pendingGeometry;
-};
-
-class ResizeHandle : public QWidget {
-public:
-    explicit ResizeHandle(bool resizeInPlace, QWidget *parent=nullptr)
-        : QWidget(parent), resizeInPlace(resizeInPlace) {
-        setFixedSize(28,28);
-        setCursor(Qt::SizeFDiagCursor);
-        setToolTip("Drag this corner to resize Daisywheel");
-        setAccessibleName("Resize Daisywheel");
-    }
-    std::function<QRect()> geometryProvider;
-    std::function<void(const QRect &)> geometryCommitted;
-    std::function<void(const QRect &)> geometryPreview;
-    void mousePressEvent(QMouseEvent *event) override {
-        if(event->button()==Qt::LeftButton){
-            origin=event->globalPosition().toPoint();
-            initialGeometry=geometryProvider?geometryProvider():window()->geometry();
-            resizing=true;
-            pendingGeometry=initialGeometry;
-            event->accept();
-            return;
-        }
-        QWidget::mousePressEvent(event);
-    }
-    void mouseMoveEvent(QMouseEvent *event) override {
-        if(!resizing){QWidget::mouseMoveEvent(event);return;}
-        const QPoint delta=event->globalPosition().toPoint()-origin;
-        const QSize requestedMinimum=window()->minimumSizeHint().expandedTo(window()->minimumSize());
-        QScreen *screen=window()->screen();
-        if(!screen)screen=QGuiApplication::primaryScreen();
-        const QRect bounds=screen?screen->availableGeometry():QRect(QPoint(0,0),initialGeometry.size());
-        if(resizeInPlace){
-            const int minimumWidth=qMin(requestedMinimum.width(),bounds.width());
-            const int minimumHeight=qMin(requestedMinimum.height(),bounds.height());
-            const int right=qBound(bounds.left()+minimumWidth,initialGeometry.x()+initialGeometry.width(),bounds.right()+1);
-            const int bottom=qBound(bounds.top()+minimumHeight,initialGeometry.y()+initialGeometry.height(),bounds.bottom()+1);
-            const int x=qBound(bounds.left(),initialGeometry.x()+delta.x(),right-minimumWidth);
-            const int y=qBound(bounds.top(),initialGeometry.y()+delta.y(),bottom-minimumHeight);
-            const QRect geometry(x,y,right-x,bottom-y);
-            if(geometryChanged){
-                pendingGeometry=geometry;
-                if(geometryPreview)geometryPreview(geometry);
-                event->accept();return;
-            }
-            window()->setGeometry(geometry);
-        }else{
-            const int minimumWidth=qMin(requestedMinimum.width(),bounds.width());
-            const int minimumHeight=qMin(requestedMinimum.height(),bounds.height());
-            const int right=qBound(bounds.left()+minimumWidth,initialGeometry.x()+initialGeometry.width(),bounds.right()+1);
-            const int bottom=qBound(bounds.top()+minimumHeight,initialGeometry.y()+initialGeometry.height(),bounds.bottom()+1);
-            const int x=qBound(bounds.left(),initialGeometry.x()+delta.x(),right-minimumWidth);
-            const int y=qBound(bounds.top(),initialGeometry.y()+delta.y(),bottom-minimumHeight);
-            window()->setGeometry(x,y,right-x,bottom-y);
-        }
-        if(geometryChanged)geometryChanged(window()->geometry());
-        event->accept();
-    }
-    void mouseReleaseEvent(QMouseEvent *event) override {
-        if(event->button()==Qt::LeftButton){
-            if(resizing && resizeInPlace && geometryChanged && !pendingGeometry.isNull()){
-                geometryChanged(pendingGeometry);
-                if(geometryCommitted)geometryCommitted(pendingGeometry);
-            }
-            if(geometryPreview)geometryPreview(QRect());
-            resizing=false;pendingGeometry=QRect();event->accept();return;
-        }
-        QWidget::mouseReleaseEvent(event);
-    }
-    void paintEvent(QPaintEvent *) override {
-        QPainter painter(this);painter.setRenderHint(QPainter::Antialiasing);
-        painter.setPen(QPen(QColor("#9aa8bd"),1.5));
-        painter.drawLine(5,23,23,5);painter.drawLine(13,23,23,13);painter.drawLine(20,23,23,20);
-    }
-    std::function<void(const QRect &)> geometryChanged;
-private:
-    bool resizeInPlace=false;
-    bool resizing=false;
-    QPoint origin;
-    QRect initialGeometry;
-    QRect pendingGeometry;
-};
-
-class TouchActivation : public QObject {
-public:
-    std::function<void()> activate;
-    bool eventFilter(QObject *, QEvent *event) override {
-        if(event->type()==QEvent::TouchBegin ||
-           (event->type()==QEvent::MouseButtonPress &&
-            static_cast<QMouseEvent*>(event)->source()!=Qt::MouseEventNotSynthesized)) activate();
-        return false;
-    }
-};
-
-class WheelView : public QWidget {
-public:
-    int selected=-1;
-    bool upper=false, symbol=false;
-    bool l1Down=false,l2Down=false,r1Down=false,r2Down=false,l3Down=false,r3Down=false;
-    WheelView() {
-        setMinimumSize(420,360);
-        setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-    }
-    void flashFaceButton(int slot) {
-        flashedFaceSlot=slot;
-        faceFlashStarted=SDL_GetTicks();
-        faceFlashActive=true;
-        update();
-    }
-    void flashControllerButton(Uint8 button) {
-        const Uint32 until=SDL_GetTicks()+150;
-        switch(button){
-        case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:l1FlashUntil=until;break;
-        case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:r1FlashUntil=until;break;
-        case SDL_CONTROLLER_BUTTON_LEFTSTICK:l3FlashUntil=until;break;
-        case SDL_CONTROLLER_BUTTON_RIGHTSTICK:r3FlashUntil=until;break;
-        default:break;
-        }
-        update();
-    }
-    void flashTrigger(bool left) {
-        (left?l2FlashUntil:r2FlashUntil)=SDL_GetTicks()+150;
-        update();
-    }
-    void paintEvent(QPaintEvent*) override {
-        QPainter p(this); p.setRenderHint(QPainter::Antialiasing);
-        p.fillRect(rect(), QColor("#111827"));
-        QPointF center(width()/2.0,height()/2.0);
-        // Eight circles need diameter < 2 * radius * sin(pi / 8).
-        // Scale petals and labels together so the handheld layout stays legible.
-        double radius=std::min(width(),height())*.35;
-        double petalRadius=radius*.34;
-        double scale=petalRadius/53.0;
-        const auto &layout=symbol?wheel::symbols:wheel::letters;
-        QFont font=p.font();font.setPixelSize(qRound(19*scale));p.setFont(font);
-        const QColor colors[]={QColor("#5ee69a"),QColor("#ff7777"),QColor("#80baff"),QColor("#ffe07a")};
-        const QPointF offsets[]={{0,23*scale},{29*scale,0},{-29*scale,0},{0,-23*scale}};
-        for(int i=0;i<8;++i){
-            double a=i*wheel::pi/4;
-            QPointF c=center+QPointF(std::sin(a)*radius,-std::cos(a)*radius);
-            p.setPen(QPen(i==selected?QColor("#66d9ef"):QColor("#394459"),i==selected?3:1));
-            p.setBrush(QColor(i==selected?"#253c55":"#1c2636"));p.drawEllipse(c,petalRadius,petalRadius);
-            for(int j=0;j<4;++j){
-                QString text=QString(QChar(layout[i][j]));if(upper&&!symbol)text=text.toUpper();
-                if(i==selected&&faceFlashActive&&j==flashedFaceSlot&&SDL_GetTicks()-faceFlashStarted<180){
-                    QColor feedback=colors[j];feedback.setAlpha(55);
-                    p.setPen(QPen(colors[j],2.5));p.setBrush(feedback);
-                    p.drawEllipse(c+offsets[j],17*scale,17*scale);
-                }
-                p.setPen(colors[j]);p.drawText(QRectF(c+offsets[j]-QPointF(14*scale,14*scale),QSizeF(28*scale,28*scale)),Qt::AlignCenter,text);
-            }
-        }
-        p.setPen(QColor("#dce6f5"));
-        p.drawText(QRectF(center-QPointF(67,40),QSizeF(134,80)),Qt::AlignCenter,
-                   symbol?"Symbols":upper?"ABC":"abc");
-        auto drawShoulder=[&](const QRectF &r,const QString &label,bool down){
-            p.setPen(QPen(down?QColor("#9cecff"):QColor("#536075"),down?2:1));
-            p.setBrush(down?QColor("#66d9ef"):QColor("#202b3b"));p.drawRoundedRect(r,5,5);
-            p.setPen(down?QColor("#101827"):QColor("#aab7ca"));
-            p.drawText(r,Qt::AlignCenter,label);
-        };
-        const Uint32 now=SDL_GetTicks();
-        auto lit=[now](bool down,Uint32 until){return down||(until&&Sint32(until-now)>0);};
-        const qreal controlScale=qBound(0.65,qreal(std::min(width(),height()))/420.0,1.35);
-        const qreal side=std::min(width(),height())<320?4:12*controlScale;
-        const qreal shoulderWidth=48*controlScale,shoulderHeight=31*controlScale,gap=11*controlScale;
-        drawShoulder(QRectF(side,side,shoulderWidth,shoulderHeight),"L2",lit(l2Down,l2FlashUntil));
-        drawShoulder(QRectF(side,side+shoulderHeight+gap,shoulderWidth,shoulderHeight),"L1",lit(l1Down,l1FlashUntil));
-        drawShoulder(QRectF(width()-side-shoulderWidth,side,shoulderWidth,shoulderHeight),"R1",lit(r1Down,r1FlashUntil));
-        drawShoulder(QRectF(width()-side-shoulderWidth,side+shoulderHeight+gap,shoulderWidth,shoulderHeight),"R2",lit(r2Down,r2FlashUntil));
-        auto drawStick=[&](const QPointF &c,const QString &label,bool down){
-            const qreal radius=22*controlScale;
-            p.setPen(QPen(down?QColor("#9cecff"):QColor("#536075"),down?2:1));
-            p.setBrush(down?QColor("#66d9ef"):QColor("#202b3b"));p.drawEllipse(c,radius,radius);
-            p.setPen(down?QColor("#101827"):QColor("#aab7ca"));
-            p.drawText(QRectF(c-QPointF(radius,radius),QSizeF(radius*2,radius*2)),Qt::AlignCenter,label);
-        };
-        const qreal stickRadius=22*controlScale;
-        drawStick(QPointF(side+stickRadius,height()-side-stickRadius),"L3",lit(l3Down,l3FlashUntil));
-        drawStick(QPointF(width()-side-stickRadius,height()-side-stickRadius),"R3",lit(r3Down,r3FlashUntil));
-    }
-private:
-    int flashedFaceSlot=-1;
-    Uint32 faceFlashStarted=0;
-    Uint32 l1FlashUntil=0,l2FlashUntil=0,r1FlashUntil=0,r2FlashUntil=0,l3FlashUntil=0,r3FlashUntil=0;
-    bool faceFlashActive=false;
-};
 
 int main(int argc,char **argv){
     QApplication app(argc,argv);
@@ -367,7 +143,7 @@ int main(int argc,char **argv){
     QList<QWidget*> fullModeWidgets;
     auto addControl=[&](QWidget *control){box->addWidget(control);fullModeWidgets.append(control);return control;};
     auto *settingsPanel=new QWidget(content);
-    settingsPanel->setMinimumWidth(360);
+    settingsPanel->setMinimumWidth(280);
     auto *settingsLayout=new QVBoxLayout(settingsPanel);
     auto *settingsHeader=new QHBoxLayout;
     auto *settingsTitle=new QLabel("Daisywheel settings");
@@ -378,11 +154,17 @@ int main(int argc,char **argv){
     settingsHeader->addWidget(backToKeyboardButton);
     settingsLayout->addLayout(settingsHeader);
     auto *windowSettingsGroup=new QGroupBox("Window");
+    windowSettingsGroup->setMinimumWidth(0);
     auto *windowSettingsLayout=new QFormLayout(windowSettingsGroup);
+    windowSettingsLayout->setRowWrapPolicy(QFormLayout::WrapLongRows);
     auto *controllerSettingsGroup=new QGroupBox("Controller");
+    controllerSettingsGroup->setMinimumWidth(0);
     auto *controllerSettingsLayout=new QFormLayout(controllerSettingsGroup);
+    controllerSettingsLayout->setRowWrapPolicy(QFormLayout::WrapLongRows);
     auto *soundSettingsGroup=new QGroupBox("Sound effects");
+    soundSettingsGroup->setMinimumWidth(0);
     auto *soundSettingsLayout=new QFormLayout(soundSettingsGroup);
+    soundSettingsLayout->setRowWrapPolicy(QFormLayout::WrapLongRows);
     auto *soundEnabled=new QCheckBox("Enable sound effects");
     soundEnabled->setChecked(settings.value("soundEnabled",true).toBool());
     soundSettingsLayout->addRow(soundEnabled);
@@ -436,6 +218,9 @@ int main(int argc,char **argv){
 #endif
     auto *settingsScroll=new QScrollArea(settingsPanel);
     settingsScroll->setWidgetResizable(true);
+    settingsScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    settingsTabs->setMinimumWidth(0);
+    settingsTabs->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Expanding);
     settingsScroll->setFrameShape(QFrame::NoFrame);
     settingsScroll->setWidget(settingsTabs);
     settingsLayout->addWidget(settingsScroll,1);
@@ -451,10 +236,15 @@ int main(int argc,char **argv){
             "<h3>Other controls</h3>"
             "<p><b>L3</b> inserts a space. <b>R3</b> deletes; hold it to repeat. "
             "<b>Start</b> inserts Enter. Set the show/hide shortcut in Controller settings by pressing any mapped controller button.</p>"
+            "<p>Hold the show/hide shortcut to open Settings. In Settings, use the D-pad to move and adjust controls, "
+            "A/Start to activate, LB/RB to change tabs, and B to return to the keyboard.</p>"
             "<h3>Mouse mode</h3>"
             "<p>When enabled, mouse mode only works while the keyboard is visible. Hold <b>LT</b> "
             "and move the left stick to move the pointer. <b>R1</b> clicks and <b>R2</b> right-clicks; "
             "<b>X/Y</b> or the D-pad scroll. Release LT to return to typing.</p>"
+            "<h3>Edit text</h3>"
+            "<p>Hold <b>RT</b> and move the left stick to move the text cursor. Hold <b>LB</b> to select, "
+            "<b>RB</b> to move by words, or both to select by words.</p>"
             "<h3>Sound</h3>"
             "<p>Petal changes use a soft pitch cue, with a brighter cue for selections and actions. "
             "Adjust the volume or disable sound effects in Sound settings.</p>"
@@ -523,24 +313,32 @@ int main(int argc,char **argv){
     controllerProfile->addItem("Handheld", "handheld");
     controllerProfile->addItem("Living room / desktop", "living-room");
     controllerProfile->addItem("Custom", "custom");
-    QString savedProfile=settings.value("controllerProfile","handheld").toString();
+    QString savedProfile=settings.value("controllerProfile","living-room").toString();
     int savedProfileIndex=controllerProfile->findData(savedProfile);
-    controllerProfile->setCurrentIndex(savedProfileIndex<0?0:savedProfileIndex);
+    controllerProfile->setCurrentIndex(savedProfileIndex<0?controllerProfile->findData("living-room"):savedProfileIndex);
     controllerSettingsLayout->addRow("Profile",controllerProfile);
     auto *mouseModeEnabled=new QCheckBox("Enable mouse mode (only while keyboard is open)");
     mouseModeEnabled->setChecked(settings.value("controllerMouseEnabled",savedProfile=="living-room").toBool());
     controllerSettingsLayout->addRow(mouseModeEnabled);
     auto *pointerSpeedLabel=new QLabel;
     auto *pointerSpeed=new QSlider(Qt::Horizontal);pointerSpeed->setRange(250,1800);
+    pointerSpeed->setMinimumWidth(0);pointerSpeed->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     pointerSpeed->setValue(settings.value("pointerSpeed",950).toInt());controllerSettingsLayout->addRow(pointerSpeedLabel,pointerSpeed);
+    auto *deadzoneLabel=new QLabel;
+    auto *deadzone=new QSlider(Qt::Horizontal);deadzone->setRange(5,45);
+    deadzone->setMinimumWidth(0);deadzone->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
+    deadzone->setValue(settings.value("controllerDeadzone",20).toInt());
+    controllerSettingsLayout->addRow(deadzoneLabel,deadzone);
     auto *hapticsEnabled=new QCheckBox("Enable haptic feedback");
     hapticsEnabled->setChecked(settings.value("hapticsEnabled",false).toBool());controllerSettingsLayout->addRow(hapticsEnabled);
     auto *hapticsStrengthLabel=new QLabel;
     auto *hapticsStrength=new QSlider(Qt::Horizontal);hapticsStrength->setRange(10,100);
+    hapticsStrength->setMinimumWidth(0);hapticsStrength->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     hapticsStrength->setValue(settings.value("hapticsStrength",50).toInt());controllerSettingsLayout->addRow(hapticsStrengthLabel,hapticsStrength);
     hapticsStrengthLabel->setText(QString("Haptic strength: %1%").arg(hapticsStrength->value()));
     controllerProfile->setVisible(systemMode);mouseModeEnabled->setVisible(systemMode);
     pointerSpeedLabel->setVisible(systemMode);pointerSpeed->setVisible(systemMode);
+    deadzoneLabel->setVisible(systemMode);deadzone->setVisible(systemMode);
     hapticsEnabled->setVisible(systemMode);hapticsStrengthLabel->setVisible(systemMode);
     hapticsStrength->setVisible(systemMode);
     pointerSpeed->setEnabled(mouseModeEnabled->isChecked());
@@ -551,6 +349,15 @@ int main(int argc,char **argv){
         controllerProfile->setCurrentIndex(controllerProfile->findData("custom"));
         settings.setValue("controllerProfile","custom");
     };
+    auto setDeadzoneLabel=[&](int value){
+        deadzoneLabel->setText(QString("Stick deadzone: %1%").arg(value));
+    };
+    setDeadzoneLabel(deadzone->value());
+    QObject::connect(deadzone,&QSlider::valueChanged,[&](int value){
+        setDeadzoneLabel(value);
+        settings.setValue("controllerDeadzone",value);
+        setCustomProfile();
+    });
     QObject::connect(controllerProfile,&QComboBox::currentIndexChanged,[&](int index){
         const QString profile=controllerProfile->itemData(index).toString();
         settings.setValue("controllerProfile",profile);
@@ -558,6 +365,7 @@ int main(int argc,char **argv){
         applyingControllerPreset=true;
         mouseModeEnabled->setChecked(profile=="living-room");
         pointerSpeed->setValue(950);
+        deadzone->setValue(20);
         applyingControllerPreset=false;
     });
     QObject::connect(mouseModeEnabled,&QCheckBox::toggled,[&](bool enabled){
@@ -666,6 +474,8 @@ int main(int argc,char **argv){
         view->hide();
         minimalBar->hide();
         settingsPanel->show();
+        settingsTabs->setCurrentWidget(controllerSettingsGroup);
+        controllerProfile->setFocus(Qt::OtherFocusReason);
         window.setWindowTitle("Daisywheel settings");
     };
     showKeyboard=[&]{
@@ -742,6 +552,23 @@ int main(int argc,char **argv){
 #endif
         if(backspace){auto cursor=editor->textCursor();cursor.deletePreviousChar();editor->setTextCursor(cursor);if(haptic)haptic(40);}
         else {editor->insertPlainText("\n");if(haptic)haptic(55);}
+    };
+    auto sendNavigation=[&](int direction,bool shift,bool control){
+        const unsigned symbols[]={0xff51,0xff53,0xff52,0xff54};
+#ifdef Q_OS_WIN
+        if(windowsMode){const WORD keys[]={VK_LEFT,VK_RIGHT,VK_UP,VK_DOWN};windowsInput.navigate(keys[direction],shift,control);return;}
+#endif
+#ifdef DAISYWHEEL_KDE
+        if(kde){kde->navigate(symbols[direction],shift,control);return;}
+#endif
+        QTextCursor cursor=editor->textCursor();
+        const QTextCursor::MoveOperation operations[]={
+            control?QTextCursor::WordLeft:QTextCursor::Left,
+            control?QTextCursor::WordRight:QTextCursor::Right,
+            control?QTextCursor::PreviousBlock:QTextCursor::Up,
+            control?QTextCursor::NextBlock:QTextCursor::Down};
+        cursor.movePosition(operations[direction],shift?QTextCursor::KeepAnchor:QTextCursor::MoveAnchor);
+        editor->setTextCursor(cursor);
     };
     auto pointerMove=[&](int dx,int dy){
 #ifdef Q_OS_WIN
@@ -828,6 +655,29 @@ int main(int argc,char **argv){
     bool shortcutButtonDown=false;
     int previousSoundPetal=-1;
     Uint32 shortcutPressedAt=0;
+    int editDirection=-1;
+    Uint32 editDirectionStarted=0,editLastRepeat=0;
+    auto moveSettingsFocus=[&](bool forward){
+        QList<QWidget*> candidates=settingsTabs->currentWidget()->findChildren<QWidget*>();
+        candidates.erase(std::remove_if(candidates.begin(),candidates.end(),[&](QWidget *item){
+            return item->focusPolicy()==Qt::NoFocus||!item->isEnabled()||!item->isVisibleTo(settingsTabs->currentWidget());
+        }),candidates.end());
+        std::sort(candidates.begin(),candidates.end(),[&](QWidget *a,QWidget *b){
+            QPoint pa=a->mapTo(settingsTabs->currentWidget(),QPoint()),pb=b->mapTo(settingsTabs->currentWidget(),QPoint());
+            return pa.y()==pb.y()?pa.x()<pb.x():pa.y()<pb.y();
+        });
+        if(candidates.isEmpty())return;
+        int index=candidates.indexOf(QApplication::focusWidget());
+        index=(index+(forward?1:-1)+candidates.size())%candidates.size();
+        candidates[index]->setFocus(Qt::OtherFocusReason);
+        if(auto *area=qobject_cast<QScrollArea*>(settingsScroll))area->ensureWidgetVisible(candidates[index]);
+    };
+    auto activateSettingsFocus=[&]{
+        QWidget *focused=QApplication::focusWidget();
+        if(auto *button=qobject_cast<QAbstractButton*>(focused))button->click();
+        else if(auto *combo=qobject_cast<QComboBox*>(focused))
+            combo->setCurrentIndex((combo->currentIndex()+1)%combo->count());
+    };
     QObject::connect(&timer,&QTimer::timeout,[&]{
         if(sdlOk){SDL_Event event;
             while(SDL_PollEvent(&event)){
@@ -856,7 +706,10 @@ int main(int argc,char **argv){
                     }
                     if(event.cbutton.button==shortcutButton&&shortcutButtonDown){
                         const Uint32 held=SDL_GetTicks()-shortcutPressedAt;
-                        if(minimalActive&&window.isVisible()&&view->isVisible()&&held>=800)minimalMode->setChecked(false);
+                        if(held>=800){
+                            if(!window.isVisible())manualToggle();
+                            if(showSettings)showSettings();
+                        }
                         else if(systemMode)manualToggle();
                         else if(window.isVisible()){if(showKeyboard)showKeyboard();window.hide();}
                         else {if(showKeyboard)showKeyboard();view->show();window.show();}
@@ -879,6 +732,25 @@ int main(int argc,char **argv){
                     soundEffects.buttonPressed();
                     continue;
                 }
+                if(settingsPanel->isVisible()){
+                    const int button=event.cbutton.button;
+                    if(button==SDL_CONTROLLER_BUTTON_B){if(showKeyboard)showKeyboard();soundEffects.buttonPressed();}
+                    else if(button==SDL_CONTROLLER_BUTTON_A||button==SDL_CONTROLLER_BUTTON_START){activateSettingsFocus();soundEffects.buttonPressed();}
+                    else if(button==SDL_CONTROLLER_BUTTON_DPAD_DOWN){moveSettingsFocus(true);soundEffects.buttonPressed();}
+                    else if(button==SDL_CONTROLLER_BUTTON_DPAD_UP){moveSettingsFocus(false);soundEffects.buttonPressed();}
+                    else if(button==SDL_CONTROLLER_BUTTON_LEFTSHOULDER||button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER){
+                        const int delta=button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER?1:-1;
+                        settingsTabs->setCurrentIndex((settingsTabs->currentIndex()+delta+settingsTabs->count())%settingsTabs->count());
+                        moveSettingsFocus(true);
+                        soundEffects.buttonPressed();
+                    }else if(button==SDL_CONTROLLER_BUTTON_DPAD_LEFT||button==SDL_CONTROLLER_BUTTON_DPAD_RIGHT){
+                        QWidget *focused=QApplication::focusWidget();const int delta=button==SDL_CONTROLLER_BUTTON_DPAD_RIGHT?1:-1;
+                        if(auto *slider=qobject_cast<QSlider*>(focused))slider->setValue(slider->value()+delta*qMax(1,slider->singleStep()));
+                        else if(auto *combo=qobject_cast<QComboBox*>(focused))combo->setCurrentIndex(qBound(0,combo->currentIndex()+delta,combo->count()-1));
+                        soundEffects.buttonPressed();
+                    }
+                    continue;
+                }
                 const bool mouseModifier=systemMode&&window.isVisible()&&view->isVisible()&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
                 if(mouseModifier){
                     switch(event.cbutton.button){
@@ -896,17 +768,21 @@ int main(int argc,char **argv){
                     }
                     continue;
                 }
+                const bool editingModifier=SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERRIGHT)>16000;
+                if(editingModifier&&(event.cbutton.button==SDL_CONTROLLER_BUTTON_LEFTSHOULDER||event.cbutton.button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER))continue;
                 if(!window.isVisible())continue;
                 if(!view->isVisible())continue;
                 // Sample the stick before committing, including movement in this event batch.
-                view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
+                view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,
+                                             SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0,
+                                             deadzone->value()/100.0);
                 switch(event.cbutton.button){
                 case SDL_CONTROLLER_BUTTON_A:view->flashFaceButton(0);commit(0);break;
                 case SDL_CONTROLLER_BUTTON_B:view->flashFaceButton(1);commit(1);break;
                 case SDL_CONTROLLER_BUTTON_X:view->flashFaceButton(2);commit(2);break;
                 case SDL_CONTROLLER_BUTTON_Y:view->flashFaceButton(3);commit(3);break;
-                case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:view->upper=!view->upper;soundEffects.buttonPressed();if(haptic)haptic(35);break;
-                case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:view->symbol=!view->symbol;soundEffects.buttonPressed();if(haptic)haptic(35);break;
+                case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:if(!editingModifier){view->upper=!view->upper;soundEffects.buttonPressed();if(haptic)haptic(35);}break;
+                case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:if(!editingModifier){view->symbol=!view->symbol;soundEffects.buttonPressed();if(haptic)haptic(35);}break;
                 case SDL_CONTROLLER_BUTTON_LEFTSTICK:soundEffects.buttonPressed();sendText(" ");break;
                 case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
                     soundEffects.buttonPressed();
@@ -951,15 +827,11 @@ int main(int argc,char **argv){
         const double dt=qMin(0.05,(now-pointerLastTick)/1000.0);
         pointerLastTick=now;
         if(pointerMode&&controller){
-            auto curve=[](Sint16 raw){
-                const double value=raw/32768.0;
-                const double magnitude=std::abs(value);
-                if(magnitude<=0.18)return 0.0;
-                const double normalized=(magnitude-0.18)/0.82;
-                return std::copysign(std::pow(normalized,1.6),value);
-            };
-            pointerRemainderX+=curve(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX))*pointerSpeed->value()*dt;
-            pointerRemainderY+=curve(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY))*pointerSpeed->value()*dt;
+            const auto stick=wheel::applyDeadzone(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,
+                                                  SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0,
+                                                  deadzone->value()/100.0);
+            pointerRemainderX+=stick.first*pointerSpeed->value()*dt;
+            pointerRemainderY+=stick.second*pointerSpeed->value()*dt;
             const int dx=static_cast<int>(pointerRemainderX),dy=static_cast<int>(pointerRemainderY);
             pointerRemainderX-=dx;pointerRemainderY-=dy;
             pointerMove(dx,dy);
@@ -967,8 +839,20 @@ int main(int argc,char **argv){
             pointerRemainderX=pointerRemainderY=0.0;
         }
         if(controller&&!pointerMode){
-            view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
+            view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0,deadzone->value()/100.0);
         }
+        const bool editingNow=controller&&window.isVisible()&&view->isVisible()&&!settingsPanel->isVisible()&&!pointerMode&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERRIGHT)>16000;
+        if(editingNow){
+            const auto stick=wheel::applyDeadzone(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,
+                                                  SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0,
+                                                  deadzone->value()/100.0);
+            int direction=-1;
+            if(std::abs(stick.first)>std::abs(stick.second))direction=stick.first<0?0:1;
+            else if(std::abs(stick.second)>0.0)direction=stick.second<0?2:3;
+            if(direction<0)editDirection=-1;
+            else if(direction!=editDirection){editDirection=direction;editDirectionStarted=now;editLastRepeat=now;sendNavigation(direction,SDL_GameControllerGetButton(controller,SDL_CONTROLLER_BUTTON_LEFTSHOULDER),SDL_GameControllerGetButton(controller,SDL_CONTROLLER_BUTTON_RIGHTSHOULDER));}
+            else if(now-editDirectionStarted>=350&&now-editLastRepeat>=85){editLastRepeat=now;sendNavigation(direction,SDL_GameControllerGetButton(controller,SDL_CONTROLLER_BUTTON_LEFTSHOULDER),SDL_GameControllerGetButton(controller,SDL_CONTROLLER_BUTTON_RIGHTSHOULDER));}
+        }else editDirection=-1;
         if(window.isVisible()&&view->isVisible()&&!pointerMode&&view->selected>=0){
             if(previousSoundPetal>=0&&view->selected!=previousSoundPetal)
                 soundEffects.petalChanged(view->selected);
@@ -988,6 +872,7 @@ int main(int argc,char **argv){
         view->r3Down=controller&&SDL_GameControllerGetButton(controller,SDL_CONTROLLER_BUTTON_RIGHTSTICK);
         QString statusText=controller?QString(SDL_GameControllerName(controller)):sdlOk?"Connect a controller":"Controller initialization failed";
         if(pointerMode)statusText+=" · Mouse mode";
+        if(editingNow)statusText+=" · Editing (hold RT)";
         if(soundEnabled->isChecked()&&!soundAvailable)statusText+=" · Sound output unavailable";
         if(systemMode&&controller&&hapticsEnabled->isChecked()&&!controllerRumbleAvailable)
             statusText+=" · Controller rumble unavailable";

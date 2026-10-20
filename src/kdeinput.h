@@ -17,6 +17,7 @@ public:
     bool verificationTarget() const;
     bool commit(const QString &text);
     bool key(unsigned symbol);
+    bool navigate(unsigned symbol,bool shift,bool control);
     std::function<void(bool)> activation;
 private:
     class Impl;

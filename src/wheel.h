@@ -2,11 +2,20 @@
 #include <cmath>
 #include <array>
 #include <string>
+#include <utility>
+#include <algorithm>
 namespace wheel {
 constexpr double pi = 3.14159265358979323846;
 // Clockwise from north. Neutral never commits a character.
-inline int sector(double x, double y) {
-    if (std::hypot(x, y) < 0.35) return -1;
+inline std::pair<double,double> applyDeadzone(double x,double y,double deadzone) {
+    const double magnitude=std::hypot(x,y);
+    deadzone=std::clamp(deadzone,0.0,0.95);
+    if(magnitude<=deadzone||magnitude==0.0)return {0.0,0.0};
+    const double scaled=std::min(1.0,(magnitude-deadzone)/(1.0-deadzone));
+    return {x/magnitude*scaled,y/magnitude*scaled};
+}
+inline int sector(double x, double y,double deadzone=0.35) {
+    if (std::hypot(x, y) < deadzone) return -1;
     double angle = std::atan2(x, -y);
     return (int(std::floor(angle / (pi / 4) + 0.5)) + 8) % 8;
 }

@@ -5,6 +5,11 @@ int main() {
     const double points[][2] = {{0,-1},{1,-1},{1,0},{1,1},{0,1},{-1,1},{-1,0},{-1,-1}};
     for (int i=0;i<8;++i) if(wheel::sector(points[i][0],points[i][1])!=i) return 1;
     if(wheel::sector(0,0)!=-1 || wheel::sector(.2,.2)!=-1) return 2;
+    if(wheel::sector(.2,.2,.15)<0)return 10;
+    const auto neutral=wheel::applyDeadzone(.1,.1,.2);
+    const auto full=wheel::applyDeadzone(1,0,.2);
+    const auto half=wheel::applyDeadzone(.6,0,.2);
+    if(neutral.first!=0||neutral.second!=0||std::abs(full.first-1)>1e-9||std::abs(half.first-.5)>1e-9)return 11;
     for(auto &s:wheel::letters) if(s.size()!=4) return 3;
     for(auto &s:wheel::symbols) if(s.size()!=4) return 4;
     VisibilityPolicy policy;
@@ -16,5 +21,5 @@ int main() {
     if(!policy.visible(true,true))return 8;
     policy.manual(true);
     if(!policy.visible(false,false)||!policy.visible(true,false))return 9;
-    std::cout << "Eight directions, neutral deadzone and character slots passed\n";
+    std::cout << "Eight directions, configurable deadzone, and character slots passed\n";
 }

@@ -65,6 +65,16 @@ public:
         INPUT up=down;up.ki.dwFlags=KEYEVENTF_KEYUP;
         std::vector<INPUT> events{down,up};return send(events);
     }
+    bool navigate(WORD virtualKey,bool shift,bool control) {
+        std::vector<INPUT> events;
+        const auto keyEvent=[](WORD key,bool up){INPUT e{};e.type=INPUT_KEYBOARD;e.ki.wVk=key;if(up)e.ki.dwFlags=KEYEVENTF_KEYUP;return e;};
+        if(control)events.push_back(keyEvent(VK_CONTROL,false));
+        if(shift)events.push_back(keyEvent(VK_SHIFT,false));
+        events.push_back(keyEvent(virtualKey,false));events.push_back(keyEvent(virtualKey,true));
+        if(shift)events.push_back(keyEvent(VK_SHIFT,true));
+        if(control)events.push_back(keyEvent(VK_CONTROL,true));
+        return send(events);
+    }
     bool mouseMove(int dx,int dy) {
         if(dx==0&&dy==0)return true;
         INPUT event{};event.type=INPUT_MOUSE;event.mi.dx=dx;event.mi.dy=dy;
