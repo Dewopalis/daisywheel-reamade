@@ -20,10 +20,9 @@ Minimal mode with dragging, and the transparency control.
 | <img src="docs/media/minimal-mode-dragging.gif" alt="Dragging the Daisywheel overlay in Minimal mode" width="420"> | <img src="docs/media/transparency-slider.gif" alt="Adjusting the Daisywheel transparency slider" width="420"> |
 
 **Current status:** controller typing works in other applications on the
-development PCs running Windows and KDE Plasma / Wayland. The v0.2.0 release
-adds a guided first-launch installer for the Linux AppImage. The controller
-profiles, mouse mode, hold-to-repeat Backspace, haptic feedback and compact
-control layout have since merged into `main` and are planned for v0.3.0.
+development PCs running Windows and KDE Plasma / Wayland. The v0.3.0 release
+includes controller profiles, mouse mode, hold-to-repeat Backspace, haptic
+feedback, a compact control layout and the guided Linux AppImage installer.
 Touchscreen devices, broader application compatibility and Steam Deck Gaming
 Mode still need testing.
 
@@ -59,9 +58,10 @@ for trying recent changes; they have not necessarily been manually validated on
 handheld hardware.
 
 For reviewed, persistent downloads, visit [GitHub Releases](https://github.com/Dewopalis/daisywheel-reamade/releases).
-The v0.2.0 release includes the Windows installer and portable ZIP, Debian DEB,
-Fedora RPM, Linux AppImage and SHA-256 checksums. Future version tags build
-packages and prepare a draft release for review before publication.
+The [v0.3.0 release](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.3.0)
+includes the Windows installer and portable ZIP, Debian DEB, Fedora RPM, Linux
+AppImage and SHA-256 checksums. Future version tags build packages and prepare
+a draft release for review before publication.
 
 See [installation and release packaging](docs/releases/packaging.md) for supported
 platform baselines and release details.
@@ -360,13 +360,17 @@ kbuildsycoca6 --noincremental
 - [x] Windows UI Automation text-field detection and optional sign-in startup.
 - [x] Move, pin and resize the overlay; Minimal mode and adjustable transparency.
 - [x] Add handheld and living-room controller profiles, adjustable pointer speed, mouse controls, hold-to-repeat Backspace, optional haptic feedback, and a compact control layout (v0.3.0).
-- [x] Build and publish v0.2.0 packages for Windows and Linux, including the guided Linux AppImage installer.
+- [x] Build and publish v0.3.0 packages for Windows and Linux, including the guided Linux AppImage installer.
+- [x] Add timeouts and cancellation for KDE pointer requests, coalesce pointer movement, and release held mouse buttons during cleanup (v0.3.1).
 - [ ] Validate touch/tablet opening and KDE keyboard policies on supported hardware.
 - [ ] Test sign-in/reboot startup, controller reconnection and multiple displays on target systems.
 - [ ] Broaden compatibility testing across browsers, editors and XWayland applications on Linux, and more applications and controllers on Windows.
 - [ ] Validate compact layout and controller labels on handheld screens and controllers.
 - [ ] Add configurable per-button mappings and stick deadzones.
 - [ ] Add more languages, layouts and controller-specific button labels.
+- [ ] Add a modifier for controller cursor navigation and text selection (v0.4).
+- [ ] Make settings fully navigable with a controller, including profiles and portal permissions (v0.4).
+- [ ] Improve mouse-mode recovery from sleep/resume and portal failures without requiring an LT cycle (v0.4).
 - [ ] Test published packages on handhelds, including Steam Deck Desktop Mode and ROG Ally.
 - [ ] Investigate Steam Deck Gaming Mode separately.
 

@@ -675,6 +675,24 @@ int main(int argc,char **argv){
     Uint32 pointerLastTick=SDL_GetTicks();
     double pointerRemainderX=0.0,pointerRemainderY=0.0;
     QList<Uint8> heldPointerButtons;
+    auto releaseMouseButtons=[&]{
+        for(Uint8 button:heldPointerButtons)
+            pointerButton(button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,false);
+        heldPointerButtons.clear();
+        if(rightTriggerClickHeld){
+            pointerButton(false,false);
+            rightTriggerClickHeld=false;
+        }
+    };
+    QObject::connect(&app,&QCoreApplication::aboutToQuit,&app,[&]{
+        releaseMouseButtons();
+#ifdef Q_OS_WIN
+        if(windowsMode)windowsInput.setPointerPassthrough(false);
+#endif
+#ifdef DAISYWHEEL_KDE
+        if(kde&&window.windowHandle())window.windowHandle()->setFlag(Qt::WindowTransparentForInput,false);
+#endif
+    });
     QObject::connect(&backspaceRepeatTimer,&QTimer::timeout,[&]{
         if(!backspaceHeld||!window.isVisible()||!view->isVisible()){
             backspaceHeld=false;
@@ -696,9 +714,7 @@ int main(int argc,char **argv){
                     controllerRumbleAvailable=controller&&SDL_GameControllerHasRumble(controller)==SDL_TRUE;
                 }
                 if(event.type==SDL_CONTROLLERDEVICEREMOVED&&controller&&event.cdevice.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))){
-                    for(Uint8 button:heldPointerButtons)pointerButton(button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,false);
-                    heldPointerButtons.clear();
-                    if(rightTriggerClickHeld){pointerButton(false,false);rightTriggerClickHeld=false;}
+                    releaseMouseButtons();
 #ifdef Q_OS_WIN
                     if(windowsMode)windowsInput.setPointerPassthrough(false);
 #endif
@@ -799,10 +815,7 @@ int main(int argc,char **argv){
 #endif
         }
         if(mouseModeNow!=pointerMode){
-            if(!mouseModeNow){
-                for(Uint8 button:heldPointerButtons)pointerButton(button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,false);
-                heldPointerButtons.clear();
-            }
+            if(!mouseModeNow)releaseMouseButtons();
 #ifdef Q_OS_WIN
             if(windowsMode)windowsInput.setPointerPassthrough(mouseModeNow);
 #endif
