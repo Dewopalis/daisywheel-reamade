@@ -265,8 +265,8 @@ Characters sit at the physical south/east/west/north face-button positions. SDL 
 | Left stick click | Space |
 | Right stick click / hold | Backspace once / repeat while held |
 | Hold left trigger (LT), when mouse mode is enabled | Switch to controller mouse mode in system mode |
-| Right stick while holding LT | Move pointer |
-| A / B while holding LT | Left-click / right-click |
+| Left stick while holding LT | Move pointer |
+| R1 / R2 while holding LT | Left-click / right-click |
 | X / Y while holding LT | Scroll up / down |
 | D-pad up / down while holding LT | Scroll faster up / down |
 | Start / Menu | Enter |
@@ -308,6 +308,8 @@ asks the desktop's RemoteDesktop portal for pointer permission the first time
 you hold LT; grant pointer access in the prompt. The portal may remember that
 permission across restarts. When mouse mode is active, the overlay is made
 click-through so mouse clicks reach the application underneath it.
+This follows the common handheld layout: the left stick moves the pointer, R1
+clicks, and the right trigger (R2) right-clicks while LT is held.
 
 Unpin the wheel, drag the header to move it, then pin it if you want to lock the
 position. Drag the small diagonal grip in the top-left corner to resize. During

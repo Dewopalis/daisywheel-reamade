@@ -463,7 +463,7 @@ int main(int argc,char **argv){
     editor->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
     editor->viewport()->installEventFilter(&activation);
     addControl(new QLabel("Left stick: petal · Face buttons: character · LB: shift · RB: symbols\n"
-                             "When mouse mode is enabled, hold LT: right stick pointer · A/B click · X/Y scroll\n"
+                             "When mouse mode is enabled, hold LT: left stick pointer · R1/R2 click · X/Y scroll\n"
                              "Left stick click: space · Right stick click/hold: backspace · Start: enter · Back: hide\n"
                              "Open Settings to customize Daisywheel · Tap ≡ or hold the selected shortcut to restore controls"));
     auto *toggle=new QPushButton("Show / hide wheel");addControl(toggle);
@@ -573,6 +573,7 @@ int main(int argc,char **argv){
     backspaceRepeatTimer.setSingleShot(true);
     bool backspaceHeld=false;
     bool pointerMode=false;
+    bool rightTriggerClickHeld=false;
     Uint32 pointerLastTick=SDL_GetTicks();
     double pointerRemainderX=0.0,pointerRemainderY=0.0;
     QList<Uint8> heldPointerButtons;
@@ -594,8 +595,9 @@ int main(int argc,char **argv){
             while(SDL_PollEvent(&event)){
                 if(event.type==SDL_CONTROLLERDEVICEADDED&&!controller)controller=SDL_GameControllerOpen(event.cdevice.which);
                 if(event.type==SDL_CONTROLLERDEVICEREMOVED&&controller&&event.cdevice.which==SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))){
-                    for(Uint8 button:heldPointerButtons)pointerButton(button==SDL_CONTROLLER_BUTTON_A,false);
+                    for(Uint8 button:heldPointerButtons)pointerButton(button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,false);
                     heldPointerButtons.clear();
+                    if(rightTriggerClickHeld){pointerButton(false,false);rightTriggerClickHeld=false;}
 #ifdef Q_OS_WIN
                     if(windowsMode)windowsInput.setPointerPassthrough(false);
 #endif
@@ -609,7 +611,7 @@ int main(int argc,char **argv){
                         backspaceHeld=false;backspaceRepeatTimer.stop();backspaceRepeatTimer.setSingleShot(true);
                     }
                     if(heldPointerButtons.contains(event.cbutton.button)){
-                        pointerButton(event.cbutton.button==SDL_CONTROLLER_BUTTON_A,false);
+                        pointerButton(event.cbutton.button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,false);
                         heldPointerButtons.removeAll(event.cbutton.button);
                     }
                     if(event.cbutton.button==shortcut->currentData().toInt()&&shortcutButtonDown){
@@ -634,9 +636,8 @@ int main(int argc,char **argv){
                 const bool mouseModifier=systemMode&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
                 if(mouseModifier){
                     switch(event.cbutton.button){
-                    case SDL_CONTROLLER_BUTTON_A:
-                    case SDL_CONTROLLER_BUTTON_B:
-                        pointerButton(event.cbutton.button==SDL_CONTROLLER_BUTTON_A,true);
+                    case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+                        pointerButton(true,true);
                         if(!heldPointerButtons.contains(event.cbutton.button))heldPointerButtons.append(event.cbutton.button);
                         break;
                     case SDL_CONTROLLER_BUTTON_X:pointerScroll(1);break;
@@ -683,6 +684,9 @@ int main(int argc,char **argv){
             backspaceHeld=false;backspaceRepeatTimer.stop();backspaceRepeatTimer.setSingleShot(true);
         }
         bool mouseModeNow=controller&&systemMode&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
+        const bool rightTriggerClickNow=mouseModeNow&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERRIGHT)>16000;
+        if(rightTriggerClickNow!=rightTriggerClickHeld)pointerButton(false,rightTriggerClickNow);
+        rightTriggerClickHeld=rightTriggerClickNow;
         if(mouseModeNow&&!pointerMode){
 #ifdef DAISYWHEEL_KDE
             if(portalPointer)portalPointer->requestAccess();
@@ -708,8 +712,8 @@ int main(int argc,char **argv){
                 const double normalized=(magnitude-0.18)/0.82;
                 return std::copysign(std::pow(normalized,1.6),value);
             };
-            pointerRemainderX+=curve(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_RIGHTX))*pointerSpeed->value()*dt;
-            pointerRemainderY+=curve(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_RIGHTY))*pointerSpeed->value()*dt;
+            pointerRemainderX+=curve(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX))*pointerSpeed->value()*dt;
+            pointerRemainderY+=curve(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY))*pointerSpeed->value()*dt;
             const int dx=static_cast<int>(pointerRemainderX),dy=static_cast<int>(pointerRemainderY);
             pointerRemainderX-=dx;pointerRemainderY-=dy;
             pointerMove(dx,dy);
@@ -722,7 +726,7 @@ int main(int argc,char **argv){
             if(view->selected>=0&&view->selected!=previousSelection&&haptic)haptic(8);
         }
         QString statusText=controller?QString("Connected: %1").arg(SDL_GameControllerName(controller)):sdlOk?"Connect a controller":"Controller initialization failed";
-        if(pointerMode)statusText+=" · Mouse mode: RS move, A/B click, X/Y scroll";
+        if(pointerMode)statusText+=" · Mouse mode: LS move, R1/R2 click, X/Y scroll";
 #ifdef DAISYWHEEL_KDE
         if(portalPointer&&!portalPointer->status().isEmpty())statusText+=" · "+portalPointer->status();
 #endif
