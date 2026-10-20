@@ -62,8 +62,24 @@ RPM, Linux AppImage and SHA-256 checksums. Future version tags build packages
 and prepare a draft release for review before publication.
 
 See [installation and release packaging](docs/releases/packaging.md) for supported
-platform baselines, installing downloads and creating a release. The source-build
-instructions below remain available for developers.
+platform baselines and release details.
+
+### Install a release
+
+- **Windows:** run the setup `.exe` and follow the installer.
+- **Debian-based KDE:** open the downloaded `.deb` with **Discover** and choose
+  **Install**. Fedora KDE users can do the same with the `.rpm`.
+- **CachyOS / Arch KDE:** open the downloaded `.AppImage`. On first launch,
+  choose **Install for this user**. It copies itself to a stable location and
+  registers Daisywheel with KDE. If it will not open, right-click it, choose
+  **Properties → Permissions**, and enable **Is executable**.
+
+After installing on KDE, open **System Settings → Keyboard → Virtual Keyboard**,
+select **Daisywheel REAmade**, and click **Apply**. KDE requires this last choice;
+the installer leaves your current keyboard selection unchanged. See the full
+[installation guide](docs/releases/packaging.md#install-downloaded-packages) for
+other package managers and removal steps. The source-build instructions below
+are for developers.
 
 ## Platform support
 
@@ -76,7 +92,7 @@ instructions below remain available for developers.
 | Windows 11 | Controller typing confirmed; UI Automation field detection tested with native and Qt controls |
 | GNOME, other Wayland desktops, X11 | System-keyboard integration not supported yet |
 
-## Install on CachyOS / Arch Linux with KDE
+## Build from source on CachyOS / Arch Linux with KDE
 
 Use a **Plasma Wayland** session. Check with `echo "$XDG_SESSION_TYPE"`; it should print `wayland`.
 

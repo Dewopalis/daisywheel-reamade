@@ -35,6 +35,7 @@
 #endif
 #ifdef DAISYWHEEL_KDE
 #include "kdeinput.h"
+#include "appimageinstaller.h"
 #include <QDBusInterface>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
@@ -207,6 +208,9 @@ int main(int argc,char **argv){
     QApplication app(argc,argv);
     QCoreApplication::setOrganizationName("Daisywheel");
     QCoreApplication::setApplicationName("Daisywheel");
+#ifdef DAISYWHEEL_KDE
+    if(app.arguments().contains("--install-appimage") && !runAppImageInstaller())return 0;
+#endif
     const int previewArgument=app.arguments().indexOf("--render-wheel-preview");
     if(previewArgument>=0){
         if(app.arguments().size()<=previewArgument+1)return 1;

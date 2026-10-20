@@ -72,27 +72,40 @@ Menu entry that starts system mode, and can create a desktop shortcut. Sign-in
 startup remains opt-in inside the app. The portable ZIP needs its entire folder;
 `bin/daisywheel.exe` alone is not a portable application.
 
-**Debian:** `sudo apt install ./daisywheel-reamade_*.deb`.
+**Debian / Ubuntu:** double-click the downloaded `.deb` to open KDE Discover (or
+your installed package installer), then choose **Install**. You can also install
+from a terminal with `sudo apt install ./daisywheel-reamade_*.deb`.
 
-**Fedora:** `sudo dnf install ./daisywheel-reamade-*.rpm`.
+**Fedora:** double-click the downloaded `.rpm` to open KDE Discover (or your
+installed package installer), then choose **Install**. The terminal option is
+`sudo dnf install ./daisywheel-reamade-*.rpm`.
 
 For either Linux native package, select Daisywheel REAmade in KDE's Virtual
 Keyboard settings and Apply. Do not add a second autostart entry. An old user-local
 desktop entry from the source-install instructions can shadow the packaged one;
 remove or update it before selecting the package's keyboard.
 
-**AppImage:** place the file at a stable path, make it executable, then register it:
+**CachyOS / Arch AppImage:** open the downloaded AppImage. If it will not open,
+right-click it, choose **Properties → Permissions**, and enable **Is executable**.
+On first launch, choose **Install for this user**. The installer copies it to a
+stable location and registers it with KDE without changing your preferred
+keyboard. To finish, select Daisywheel REAmade in **System Settings → Keyboard →
+Virtual Keyboard** and click **Apply**. The installer offers to open that
+settings page for you.
+
+Reinstalling a newer AppImage from its download location replaces the installed
+copy and updates the KDE registration. If you prefer to do this manually, place
+the file at a stable path, make it executable, and run:
 
 ```bash
 chmod +x daisywheel-reamade-0.1.0-linux-x86_64.AppImage
 ./daisywheel-reamade-0.1.0-linux-x86_64.AppImage --install-desktop-entry
 ```
 
-Registration needs Python 3 and KDE's `kbuildsycoca6`. Select the registered
-keyboard in KDE settings. It records the exact AppImage path; moving the file
-requires registering the new path. Installation does not change your preferred
-keyboard automatically. Qt's Wayland and layer-shell plugins are explicitly
-bundled because they are loaded dynamically.
+Manual registration needs Python 3 and KDE's `kbuildsycoca6`. It records the
+exact AppImage path; moving the file requires registering the new path. Qt's
+Wayland and layer-shell plugins are explicitly bundled because they are loaded
+dynamically.
 
 If the system lacks AppImage FUSE support, set `APPIMAGE_EXTRACT_AND_RUN=1` for
 one-off runs. For KWin startup on those systems, extract to a stable directory and
