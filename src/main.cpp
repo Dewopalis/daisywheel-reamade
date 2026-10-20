@@ -35,6 +35,7 @@
 #include <QLockFile>
 #include <QStandardPaths>
 #include <functional>
+#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <SDL.h>
@@ -388,12 +389,23 @@ int main(int argc,char **argv){
     auto *soundVolumeLabel=new QLabel;
     auto *soundVolume=new QSlider(Qt::Horizontal);
     soundVolume->setRange(0,100);
-    soundVolume->setValue(settings.value("soundVolume",35).toInt());
+    int initialSoundVolume=settings.value("soundVolume",50).toInt();
+    if(settings.value("soundLevelRevision",0).toInt()<1){
+        // Preserve users' previously selected quiet level after the master
+        // output is reduced by 10x. Values above 10 simply become quieter.
+        if(settings.contains("soundVolume")&&initialSoundVolume>0&&initialSoundVolume<=10)
+            initialSoundVolume=std::min(100,initialSoundVolume*10);
+        settings.setValue("soundLevelRevision",1);
+    }
+    soundVolume->setValue(initialSoundVolume);
     soundSettingsLayout->addRow(soundVolumeLabel,soundVolume);
     auto *previewSound=new QPushButton("Preview button sound");
     soundSettingsLayout->addRow(previewSound);
+    auto *previewPetalSound=new QPushButton("Preview petal sound");
+    soundSettingsLayout->addRow(previewPetalSound);
     soundVolume->setEnabled(soundEnabled->isChecked());
     previewSound->setEnabled(soundEnabled->isChecked());
+    previewPetalSound->setEnabled(soundEnabled->isChecked());
     soundEffects.setEnabled(soundEnabled->isChecked());
     soundEffects.setVolume(soundVolume->value());
     auto updateSoundVolume=[&](int value){
@@ -402,15 +414,17 @@ int main(int argc,char **argv){
         settings.setValue("soundVolume",value);
     };
     updateSoundVolume(soundVolume->value());
-    soundSettingsLayout->addRow(new QLabel("Petal changes play a soft note; selections play a brighter cue."));
+    soundSettingsLayout->addRow(new QLabel("Petal movement plays a soft ringing chord; button presses play a short pluck."));
     QObject::connect(soundEnabled,&QCheckBox::toggled,[&](bool enabled){
         settings.setValue("soundEnabled",enabled);
         soundEffects.setEnabled(enabled);
         soundVolume->setEnabled(enabled);
         previewSound->setEnabled(enabled);
+        previewPetalSound->setEnabled(enabled);
     });
     QObject::connect(soundVolume,&QSlider::valueChanged,updateSoundVolume);
     QObject::connect(previewSound,&QPushButton::clicked,[&]{soundEffects.buttonPressed();});
+    QObject::connect(previewPetalSound,&QPushButton::clicked,[&]{soundEffects.petalChanged(0);});
     auto *keyboardSettingsGroup=new QGroupBox("Keyboard");
     auto *keyboardSettingsLayout=new QVBoxLayout(keyboardSettingsGroup);
     auto *settingsTabs=new QTabWidget(settingsPanel);

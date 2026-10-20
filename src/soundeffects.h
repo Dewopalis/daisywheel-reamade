@@ -18,7 +18,7 @@ public:
     void buttonPressed();
 
 private:
-    void play(int frequency, int durationMs, float strength);
+    void queue(const float *samples, int sampleCount);
 
     SDL_AudioDeviceID device = 0;
     SDL_AudioSpec format{};
