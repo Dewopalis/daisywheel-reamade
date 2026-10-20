@@ -85,17 +85,17 @@ Keyboard settings and Apply. Do not add a second autostart entry. An old user-lo
 desktop entry from the source-install instructions can shadow the packaged one;
 remove or update it before selecting the package's keyboard.
 
-**CachyOS / Arch AppImage:** open the downloaded AppImage. If it will not open,
-right-click it, choose **Properties → Permissions**, and enable **Is executable**.
-On first launch, choose **Install for this user**. The installer copies it to a
-stable location and registers it with KDE without changing your preferred
-keyboard. To finish, select Daisywheel REAmade in **System Settings → Keyboard →
-Virtual Keyboard** and click **Apply**. The installer offers to open that
-settings page for you.
+**CachyOS / Arch AppImage:** the published v0.1.0 AppImage uses manual
+registration. Download it, make it executable, then run the two commands below.
+Recent development builds include a guided first-launch installer; that flow
+will be included in a future published release. When available, it will copy
+the AppImage to a stable location and register it with KDE without changing your
+preferred keyboard. You must still select Daisywheel REAmade in **System
+Settings → Keyboard → Virtual Keyboard** and click **Apply**; the installer can
+open that settings page for you.
 
-Reinstalling a newer AppImage from its download location replaces the installed
-copy and updates the KDE registration. If you prefer to do this manually, place
-the file at a stable path, make it executable, and run:
+For v0.1.0, place the file at a stable path, make it executable, and register
+it with KDE:
 
 ```bash
 chmod +x daisywheel-reamade-0.1.0-linux-x86_64.AppImage

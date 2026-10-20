@@ -69,10 +69,11 @@ platform baselines and release details.
 - **Windows:** run the setup `.exe` and follow the installer.
 - **Debian-based KDE:** open the downloaded `.deb` with **Discover** and choose
   **Install**. Fedora KDE users can do the same with the `.rpm`.
-- **CachyOS / Arch KDE:** open the downloaded `.AppImage`. On first launch,
-  choose **Install for this user**. It copies itself to a stable location and
-  registers Daisywheel with KDE. If it will not open, right-click it, choose
-  **Properties → Permissions**, and enable **Is executable**.
+- **CachyOS / Arch KDE:** the published v0.1.0 AppImage still needs the manual
+  registration steps in the [installation guide](docs/releases/packaging.md#install-downloaded-packages).
+  Recent development builds include a guided first-launch installer; it will
+  be available in a future published release. If an AppImage will not open,
+  right-click it, choose **Properties → Permissions**, and enable **Is executable**.
 
 After installing on KDE, open **System Settings → Keyboard → Virtual Keyboard**,
 select **Daisywheel REAmade**, and click **Apply**. KDE requires this last choice;
@@ -92,11 +93,16 @@ are for developers.
 | Windows 11 | Controller typing confirmed; UI Automation field detection tested with native and Qt controls |
 | GNOME, other Wayland desktops, X11 | System-keyboard integration not supported yet |
 
-## Build from source on CachyOS / Arch Linux with KDE
+## Developer setup: build from source on CachyOS / Arch Linux with KDE
+
+These steps are for developers who want to build the project themselves. Most
+people should use one of the release packages above. Avoid mixing a source
+installation with a packaged installation: a user-local KDE entry from a source
+build can take precedence over the package entry.
 
 Use a **Plasma Wayland** session. Check with `echo "$XDG_SESSION_TYPE"`; it should print `wayland`.
 
-### 1. Install dependencies
+### 1. Install development dependencies
 
 ```bash
 sudo pacman -Syu --needed base-devel git cmake pkgconf qt6-base qt6-wayland layer-shell-qt wayland sdl2-compat
@@ -127,7 +133,7 @@ This mode types **only into its own test field**. With an Xbox controller, hold 
 You can inspect controller detection with `./build/daisywheel --controllers`.
 **Quit the test instance before enabling system mode**, so two instances do not process the same controller input.
 
-### 4. Install and register with KDE
+### 4. Install a source build and register it with KDE
 
 Run from the source directory. This installs for your user only:
 
@@ -150,7 +156,7 @@ kbuildsycoca6 --noincremental
 
 The installed executable is named `daisywheel-reamade`; the build output remains `daisywheel`. This stable install path means moving your source checkout will not break KDE's launcher. Runtime libraries must remain installed.
 
-### 5. Enable and configure
+### 5. Enable and configure the source build
 
 1. Open **System Settings → Keyboard → Virtual Keyboard**, or search settings for “Virtual Keyboard.”
 2. Select **Daisywheel REAmade** and click **Apply**.
@@ -160,6 +166,9 @@ The installed executable is named `daisywheel-reamade`; the build output remains
 KWin launches the selected keyboard. **No separate Autostart entry is needed.** The selection persists across sessions, so launch after logging into Plasma is expected; a full reboot test remains outstanding. This setup does not install a keyboard for the login screen or establish lock-screen support.
 
 ## Run on Windows
+
+For normal use, install the Windows setup `.exe` described above. The steps
+below cover running and building a development checkout.
 
 ### Launch the keyboard
 
@@ -209,9 +218,15 @@ If Windows has disabled the app, check **Settings → Apps → Startup** or **Ta
 
 To remove startup registration, uncheck **Start Daisywheel when I sign in to Windows**. Choosing **Quit** stops the current instance but keeps startup registration and preferences. Turning off automatic opening keeps manual opening available. If you move the app, launch it from the new location and toggle the startup checkbox off and on to update its path.
 
-### Update or remove
+### Update or remove a Windows installation
 
-Choose **Quit** from the tray before replacing the executable; a running instance locks the EXE on Windows. For installation from a package, use the [Windows setup installer](docs/releases/packaging.md#install-downloaded-packages). Before removing the application folder, uncheck its startup option, then quit. For updating a source build, rebuild and launch again with `--windows-input`.
+Choose **Quit** from the tray before updating; a running instance locks the EXE
+on Windows. For a setup installation, run the newer setup EXE to update, or
+uninstall Daisywheel from **Settings → Apps → Installed apps**. For the portable
+ZIP, replace the whole extracted folder or delete it to remove the app. Before
+removing either installation, disable **Start Daisywheel when I sign in to
+Windows** and quit the running instance. To update a source build, rebuild and
+launch it again with `--windows-input`.
 
 ### Build from source
 
@@ -284,7 +299,11 @@ system mode save position and size between launches. Windows keeps the
 position on its monitor and clamps it to the available desktop area after size
 or display changes.
 
-## Updating and removing on KDE
+## Updating or removing a source build on KDE
+
+These commands apply only to the developer source installation above. For a
+DEB, RPM or future guided AppImage installation, use the system's package or
+application manager; see the [package installation guide](docs/releases/packaging.md#install-downloaded-packages).
 
 First select **None** in KDE Virtual Keyboard settings and apply to stop the keyboard. From the source checkout:
 
