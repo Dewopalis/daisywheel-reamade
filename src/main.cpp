@@ -120,15 +120,17 @@ public:
         if(resizeInPlace){
             const int minimumWidth=qMin(requestedMinimum.width(),bounds.width());
             const int minimumHeight=qMin(requestedMinimum.height(),bounds.height());
-            const int width=qBound(minimumWidth,initialGeometry.width()-delta.x(),bounds.width());
-            const int height=qBound(minimumHeight,initialGeometry.height()-delta.y(),bounds.height());
-            const QRect geometry(initialGeometry.topLeft(),QSize(width,height));
+            const int right=qBound(bounds.left()+minimumWidth,initialGeometry.x()+initialGeometry.width(),bounds.right()+1);
+            const int bottom=qBound(bounds.top()+minimumHeight,initialGeometry.y()+initialGeometry.height(),bounds.bottom()+1);
+            const int x=qBound(bounds.left(),initialGeometry.x()+delta.x(),right-minimumWidth);
+            const int y=qBound(bounds.top(),initialGeometry.y()+delta.y(),bottom-minimumHeight);
+            const QRect geometry(x,y,right-x,bottom-y);
             if(geometryChanged){
                 pendingGeometry=geometry;
                 if(geometryPreview)geometryPreview(geometry);
                 event->accept();return;
             }
-            window()->resize(width,height);
+            window()->setGeometry(geometry);
         }else{
             const int minimumWidth=qMin(requestedMinimum.width(),bounds.width());
             const int minimumHeight=qMin(requestedMinimum.height(),bounds.height());
