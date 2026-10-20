@@ -533,13 +533,13 @@ int main(int argc,char **argv){
     };
     auto sendControl=[&](bool backspace){
 #ifdef Q_OS_WIN
-        if(windowsMode){windowsInput.key(backspace);if(backspace&&haptic)haptic(40);return;}
+        if(windowsMode){if(windowsInput.key(backspace)&&haptic)haptic(backspace?40:55);return;}
 #endif
 #ifdef DAISYWHEEL_KDE
-        if(kde){kde->key(backspace?0xff08:0xff0d);if(backspace&&haptic)haptic(40);return;}
+        if(kde){if(kde->key(backspace?0xff08:0xff0d)&&haptic)haptic(backspace?40:55);return;}
 #endif
         if(backspace){auto cursor=editor->textCursor();cursor.deletePreviousChar();editor->setTextCursor(cursor);if(haptic)haptic(40);}
-        else editor->insertPlainText("\n");
+        else {editor->insertPlainText("\n");if(haptic)haptic(55);}
     };
     auto pointerMove=[&](int dx,int dy){
 #ifdef Q_OS_WIN
@@ -655,11 +655,12 @@ int main(int argc,char **argv){
                     case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
                         pointerButton(true,true);
                         if(!heldPointerButtons.contains(event.cbutton.button))heldPointerButtons.append(event.cbutton.button);
+                        if(haptic)haptic(35);
                         break;
-                    case SDL_CONTROLLER_BUTTON_X:pointerScroll(1);break;
-                    case SDL_CONTROLLER_BUTTON_Y:pointerScroll(-1);break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_UP:pointerScroll(3);break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN:pointerScroll(-3);break;
+                    case SDL_CONTROLLER_BUTTON_X:pointerScroll(1);if(haptic)haptic(25);break;
+                    case SDL_CONTROLLER_BUTTON_Y:pointerScroll(-1);if(haptic)haptic(25);break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_UP:pointerScroll(3);if(haptic)haptic(25);break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN:pointerScroll(-3);if(haptic)haptic(25);break;
                     default:break;
                     }
                     continue;
@@ -673,8 +674,8 @@ int main(int argc,char **argv){
                 case SDL_CONTROLLER_BUTTON_B:commit(1);break;
                 case SDL_CONTROLLER_BUTTON_X:commit(2);break;
                 case SDL_CONTROLLER_BUTTON_Y:commit(3);break;
-                case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:view->upper=!view->upper;break;
-                case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:view->symbol=!view->symbol;break;
+                case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:view->upper=!view->upper;if(haptic)haptic(35);break;
+                case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:view->symbol=!view->symbol;if(haptic)haptic(35);break;
                 case SDL_CONTROLLER_BUTTON_LEFTSTICK:sendText(" ");break;
                 case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
                     sendControl(true);
@@ -701,7 +702,10 @@ int main(int argc,char **argv){
         }
         bool mouseModeNow=controller&&systemMode&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
         const bool rightTriggerClickNow=mouseModeNow&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERRIGHT)>16000;
-        if(rightTriggerClickNow!=rightTriggerClickHeld)pointerButton(false,rightTriggerClickNow);
+        if(rightTriggerClickNow!=rightTriggerClickHeld){
+            pointerButton(false,rightTriggerClickNow);
+            if(rightTriggerClickNow&&haptic)haptic(35);
+        }
         rightTriggerClickHeld=rightTriggerClickNow;
         if(mouseModeNow&&!pointerMode){
 #ifdef DAISYWHEEL_KDE
@@ -737,9 +741,7 @@ int main(int argc,char **argv){
             pointerRemainderX=pointerRemainderY=0.0;
         }
         if(controller&&!pointerMode){
-            const int previousSelection=view->selected;
             view->selected=wheel::sector(SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTX)/32768.0,SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_LEFTY)/32768.0);
-            if(view->selected>=0&&view->selected!=previousSelection&&haptic)haptic(18);
         }
         QString statusText=controller?QString("Connected: %1").arg(SDL_GameControllerName(controller)):sdlOk?"Connect a controller":"Controller initialization failed";
         if(pointerMode)statusText+=" · Mouse mode";

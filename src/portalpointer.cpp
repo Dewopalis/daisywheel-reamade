@@ -27,6 +27,18 @@ QVariant portalValue(const QVariantMap &results,const QString &key){
     return value;
 }
 
+QDBusMessage remoteDesktopCall(const QString &session,const QString &method,
+                              const QVariantList &arguments){
+    // RemoteDesktop methods live on the portal object; the session path is
+    // their first argument, not the D-Bus object path receiving the call.
+    QDBusMessage call=QDBusMessage::createMethodCall(
+        portalService,portalPath,remoteDesktopInterface,method);
+    QVariantList fullArguments{QDBusObjectPath(session)};
+    fullArguments.append(arguments);
+    call.setArguments(fullArguments);
+    return call;
+}
+
 class PortalResponse : public QObject {
     Q_OBJECT
 public:
@@ -160,9 +172,8 @@ void PortalPointer::startSession(){
 
 void PortalPointer::move(double dx,double dy){
     if(!isActive || (dx==0.0&&dy==0.0))return;
-    QDBusMessage call=QDBusMessage::createMethodCall(
-        portalService,sessionHandle,remoteDesktopInterface,"NotifyPointerMotion");
-    call.setArguments({QVariantMap{},dx,dy});
+    const QDBusMessage call=remoteDesktopCall(sessionHandle,"NotifyPointerMotion",
+                                               {QVariantMap{},dx,dy});
     auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call),this);
     connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher]{
         QDBusPendingReply<> reply=*watcher;
@@ -176,17 +187,15 @@ void PortalPointer::move(double dx,double dy){
 
 void PortalPointer::button(bool left,bool pressed){
     if(!isActive)return;
-    QDBusMessage call=QDBusMessage::createMethodCall(
-        portalService,sessionHandle,remoteDesktopInterface,"NotifyPointerButton");
-    call.setArguments({QVariantMap{},int(left?0x110:0x111),uint(pressed?1:0)});
+    const QDBusMessage call=remoteDesktopCall(sessionHandle,"NotifyPointerButton",
+                                               {QVariantMap{},int(left?0x110:0x111),uint(pressed?1:0)});
     QDBusConnection::sessionBus().asyncCall(call);
 }
 
 void PortalPointer::scroll(int steps){
     if(!isActive || steps==0)return;
-    QDBusMessage call=QDBusMessage::createMethodCall(
-        portalService,sessionHandle,remoteDesktopInterface,"NotifyPointerAxisDiscrete");
-    call.setArguments({QVariantMap{},uint(0),int(steps)});
+    const QDBusMessage call=remoteDesktopCall(sessionHandle,"NotifyPointerAxisDiscrete",
+                                               {QVariantMap{},uint(0),int(steps)});
     QDBusConnection::sessionBus().asyncCall(call);
 }
 

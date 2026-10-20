@@ -299,8 +299,9 @@ Controller opening works regardless of the automatic policy and keeps the overla
 
 KWin's `VirtualKeyboard.visible` property describes its native input panel, not this independent overlay; it is not a reliable visibility check for Daisywheel.
 
-Haptic feedback pulses when the controller moves between petals, types a
-character, or deletes text. It uses controller rumble support and is disabled
+Haptic feedback responds to button actions such as typing, deleting, and
+changing layers; moving the stick between petals does not trigger rumble. It
+uses controller rumble support and is disabled
 by default. Strength scales up to the controller's full rumble level; longer
 pulses make typing and deletion feedback easier to feel. Daisywheel reports
 when a connected controller does not support rumble.
