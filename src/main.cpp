@@ -182,7 +182,10 @@ public:
     int selected=-1;
     bool upper=false, symbol=false;
     bool l1Down=false,l2Down=false,r1Down=false,r2Down=false,l3Down=false,r3Down=false;
-    WheelView() { setMinimumSize(420,360); }
+    WheelView() {
+        setMinimumSize(420,360);
+        setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    }
     void flashFaceButton(int slot) {
         flashedFaceSlot=slot;
         faceFlashStarted=SDL_GetTicks();
@@ -211,7 +214,7 @@ public:
         // Eight circles need diameter < 2 * radius * sin(pi / 8).
         // Scale petals and labels together so the handheld layout stays legible.
         double radius=std::min(width(),height())*.35;
-        double petalRadius=std::min(53.0,radius*.34);
+        double petalRadius=radius*.34;
         double scale=petalRadius/53.0;
         const auto &layout=symbol?wheel::symbols:wheel::letters;
         QFont font=p.font();font.setPixelSize(qRound(19*scale));p.setFont(font);
@@ -393,6 +396,8 @@ int main(int argc,char **argv){
     auto showSettings=[settingsDialog]{settingsDialog->show();settingsDialog->raise();settingsDialog->activateWindow();};
     auto *headerWidget=new QWidget(content);
     auto *header=new QHBoxLayout(headerWidget);
+    header->setContentsMargins(0,0,0,0);
+    headerWidget->setFixedHeight(32);
     auto *resizeHandle=new ResizeHandle(kdeMode);
     header->addWidget(resizeHandle);
     auto *handle=new MoveHandle("Daisywheel · drag here to move");header->addWidget(handle,1);
@@ -512,6 +517,9 @@ int main(int argc,char **argv){
     auto *editor=new QPlainTextEdit;editor->setPlaceholderText("Tap here, then type with your controller");editor->setMaximumHeight(110);addControl(editor);
     editor->setVisible(!systemMode);
     auto *view=new WheelView;box->addWidget(view);
+    box->setStretch(box->indexOf(headerWidget),0);
+    box->setStretch(box->indexOf(status),0);
+    box->setStretch(box->indexOf(view),1);
     if(windowsMode)view->setMinimumSize(360,310);
     auto *minimalBar=new QWidget(content);
     auto *minimalBarLayout=new QHBoxLayout(minimalBar);
