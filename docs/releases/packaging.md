@@ -16,7 +16,7 @@ artifacts. They expire after 14 days. For stable downloads, use
 [GitHub Releases](https://github.com/Dewopalis/daisywheel-reamade/releases):
 tagged builds create drafts, which maintainers test before publishing.
 
-Version [v0.3.0](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.3.0)
+Version [v0.4.0](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.4.0)
 is the current release. Its workflow passed the Windows, DEB/AppImage and RPM
 jobs. CI installed the DEB and RPM packages and checked startup, verified the
 extracted AppImage, and smoke-tested the staged Windows package. Testing across
@@ -47,12 +47,12 @@ or application compatibility. Windows and Linux packages are currently unsigned.
    ```bash
    git switch main
    git pull --ff-only origin main
-   git tag v0.3.1
-   git push origin v0.3.1
+   git tag v0.4.0
+   git push origin v0.4.0
    ```
 
    Use the same `vMAJOR.MINOR.PATCH` version as `CMakeLists.txt`. The current
-   development version is `0.3.1`; prerelease suffixes are not supported.
+   development version is `0.4.0`; prerelease suffixes are not supported.
 4. Wait for Windows, DEB/AppImage and RPM jobs to succeed. The tag must match
    the CMake version.
 5. Open the draft under GitHub Releases. Download and test the actual installer,
@@ -110,7 +110,7 @@ ctest --test-dir build-ci --output-on-failure
 DESTDIR="$PWD/work/staging" cmake --install build-ci
 cpack --config build-ci/CPackConfig.cmake -G DEB -B dist  # Debian build host
 cpack --config build-ci/CPackConfig.cmake -G RPM -B dist  # Fedora build host
-bash scripts/package-appimage.sh 0.3.1 build-ci
+bash scripts/package-appimage.sh 0.4.0 build-ci
 ```
 
 Native packages must be built in their corresponding distro environment;
