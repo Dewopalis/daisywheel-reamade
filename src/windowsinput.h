@@ -39,6 +39,15 @@ public:
         SetWindowLongPtrW(overlay,GWL_EXSTYLE,
             GetWindowLongPtrW(overlay,GWL_EXSTYLE)|WS_EX_NOACTIVATE|WS_EX_TOOLWINDOW);
     }
+    void setPointerPassthrough(bool enabled) {
+        if(!overlay)return;
+        LONG_PTR style=GetWindowLongPtrW(overlay,GWL_EXSTYLE);
+        const LONG_PTR updated=enabled?(style|WS_EX_TRANSPARENT):(style&~WS_EX_TRANSPARENT);
+        if(updated==style)return;
+        SetWindowLongPtrW(overlay,GWL_EXSTYLE,updated);
+        SetWindowPos(overlay,nullptr,0,0,0,0,
+                     SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);
+    }
     bool commit(const QString &text) {
         if(text.isEmpty())return true;
         std::vector<INPUT> events;
@@ -55,6 +64,33 @@ public:
         INPUT down{};down.type=INPUT_KEYBOARD;down.ki.wVk=backspace?VK_BACK:VK_RETURN;
         INPUT up=down;up.ki.dwFlags=KEYEVENTF_KEYUP;
         std::vector<INPUT> events{down,up};return send(events);
+    }
+    bool mouseMove(int dx,int dy) {
+        if(dx==0&&dy==0)return true;
+        INPUT event{};event.type=INPUT_MOUSE;event.mi.dx=dx;event.mi.dy=dy;
+        event.mi.dwFlags=MOUSEEVENTF_MOVE;
+        if(SendInput(1,&event,sizeof(INPUT))!=1){
+            error="Windows blocked controller pointer movement";return false;
+        }
+        error.clear();return true;
+    }
+    bool mouseButton(bool left,bool pressed) {
+        INPUT event{};event.type=INPUT_MOUSE;
+        if(left)event.mi.dwFlags=pressed?MOUSEEVENTF_LEFTDOWN:MOUSEEVENTF_LEFTUP;
+        else event.mi.dwFlags=pressed?MOUSEEVENTF_RIGHTDOWN:MOUSEEVENTF_RIGHTUP;
+        if(SendInput(1,&event,sizeof(INPUT))!=1){
+            error="Windows blocked controller mouse click";return false;
+        }
+        error.clear();return true;
+    }
+    bool mouseScroll(int steps) {
+        if(steps==0)return true;
+        INPUT event{};event.type=INPUT_MOUSE;event.mi.mouseData=static_cast<DWORD>(steps*WHEEL_DELTA);
+        event.mi.dwFlags=MOUSEEVENTF_WHEEL;
+        if(SendInput(1,&event,sizeof(INPUT))!=1){
+            error="Windows blocked controller scrolling";return false;
+        }
+        error.clear();return true;
     }
     const QString &lastError() const {return error;}
 };
