@@ -46,12 +46,12 @@ or application compatibility. Windows and Linux packages are currently unsigned.
    ```bash
    git switch main
    git pull --ff-only origin main
-   git tag v0.5.0
-   git push origin v0.5.0
+   git tag v0.5.1
+   git push origin v0.5.1
    ```
 
    Use the same `vMAJOR.MINOR.PATCH` version as `CMakeLists.txt`. The current
-   development version is `0.5.0`; prerelease suffixes are not supported.
+   development version is `0.5.1`; prerelease suffixes are not supported.
 4. Wait for Windows, DEB/AppImage and RPM jobs to succeed. The tag must match
    the CMake version.
 5. Open the draft under GitHub Releases. Download and test the actual installer,
@@ -109,7 +109,7 @@ ctest --test-dir build-ci --output-on-failure
 DESTDIR="$PWD/work/staging" cmake --install build-ci
 cpack --config build-ci/CPackConfig.cmake -G DEB -B dist  # Debian build host
 cpack --config build-ci/CPackConfig.cmake -G RPM -B dist  # Fedora build host
-bash scripts/package-appimage.sh 0.5.0 build-ci
+bash scripts/package-appimage.sh build-ci
 ```
 
 Native packages must be built in their corresponding distro environment;

@@ -9,15 +9,15 @@ It is designed for handheld PCs such as the ROG Ally and Steam Deck, as well as 
 ## See it in action
 
 The examples below show controller typing, automatic opening on text focus,
-Minimal mode with dragging, and the transparency control.
+and the window's transparency control.
 
 | Controller typing | Opens on text focus |
 | --- | --- |
 | <img src="docs/media/hello-world.gif" alt="Controller typing Hello World into KWrite on KDE Plasma and Wayland" width="420"> | <img src="docs/media/focus-popup.gif" alt="Daisywheel opening when a text field is selected" width="420"> |
 
-| Minimal mode and dragging | Transparency control |
-| --- | --- |
-| <img src="docs/media/minimal-mode-dragging.gif" alt="Dragging the Daisywheel overlay in Minimal mode" width="420"> | <img src="docs/media/transparency-slider.gif" alt="Adjusting the Daisywheel transparency slider" width="420"> |
+| Transparency control |
+| --- |
+| <img src="docs/media/transparency-slider.gif" alt="Adjusting the Daisywheel transparency slider" width="420"> |
 
 **Current status:** controller typing works in other applications on the
 development PCs running Windows and KDE Plasma / Wayland. v0.5.0 adds
@@ -277,9 +277,9 @@ Characters sit at the physical south/east/west/north face-button positions. SDL 
 
 The shortcut dropdown offers Home/Guide, Back/View and Start/Menu. A chosen shortcut takes precedence over that button's typing action. Steam or desktop bindings may also respond to Guide; select another shortcut if needed. Daisywheel does not suppress those other bindings.
 
-The wheel marks L2/L1 and R1/R2 at the top and L3/R3 at the lower sides. A marker lights while its control is held, and a face-button press briefly highlights its matching character. Open **Settings** from the title bar for the **Help** tutorial and window/controller options. Hide, quit, and wheel visibility controls are also in Settings to keep the typing view compact. **Minimal mode (wheel only)** keeps **Settings** and **Show controls** on its compact bar.
+The wheel marks L2/L1 and R1/R2 at the top and L3/R3 at the lower sides. A marker lights while its control is held, and a face-button press briefly highlights its matching character. Open **Settings** from the title bar for the **Help** tutorial and window/controller options. Hide, quit, and wheel visibility controls are also in Settings.
 
-With the wheel open, hold **RT** and move the left stick to move the text cursor. Hold **LB** while moving to select text; hold **RB** to move by words, or both to select by words. The wheel shows the configured shortcut and hold progress while you hold it to open Settings, with a confirmation sound at the threshold. In Settings, use D-pad up/down to move between controls, left/right to change the focused value, **A/Start** to activate, **LB/RB** to switch tabs, and **B** to return to the keyboard.
+With the wheel open, hold **RT** and move the left stick to move the text cursor. Hold **LB** while moving to select text; hold **RB** to move by words, or both to select by words. The wheel shows the configured shortcut and hold progress while you hold it to open Settings, with a confirmation sound at the threshold. In Settings, use D-pad up/down to move between controls and the **Help** and **Back to keyboard** buttons, left/right to change the focused value, **A/Start** to toggle or activate it, **LB/RB** to switch tabs, and **B** to return to the keyboard. The current selection is highlighted and the on-screen hint summarizes these controls.
 
 ## Opening and appearance
 
@@ -296,7 +296,6 @@ Controller opening works regardless of the automatic policy and keeps the overla
 | Enable controller mouse mode | In **Settings**; disabled by Handheld and enabled by Living room / desktop |
 | Pointer speed | In **Settings**; adjustable and saved between launches |
 | Haptic feedback | In **Settings**; optional, strength adjustable, both settings saved between launches |
-| Minimal mode | In **Settings**; the compact bar keeps Settings available and **Show controls** restores the full controls |
 | KDE system-mode position | Drag the header or corner to see a translucent window outline preview; position and size apply and save on release |
 | Drag handle / pin toggle | In **Settings**, enable **Pin position** to lock dragging; otherwise drag the header to move |
 | Hide keyboard | In **Settings**; keeps controller handling running |
@@ -325,9 +324,8 @@ clicks, and R2 right-clicks while LT is held.
 Unpin the wheel, drag the header to move it, then pin it if you want to lock the
 position. Drag the small diagonal grip in the top-left corner to resize. During
 a KDE drag, a translucent outline shows the target window position or size; the
-layer shell applies it on release to avoid compositor rubber-banding. Minimal
-mode also has a compact drag handle next to **Show controls**. Windows and KDE
-system mode save position and size between launches. Windows keeps the
+layer shell applies it on release to avoid compositor rubber-banding.
+Windows and KDE system mode save position and size between launches. Windows keeps the
 position on its monitor and clamps it to the available desktop area after size
 or display changes.
 
@@ -362,7 +360,7 @@ kbuildsycoca6 --noincremental
 - [x] Controller typing, manual show/hide shortcuts and text delivery to other applications on Windows and KDE Plasma / Wayland.
 - [x] KDE Virtual Keyboard integration, including KDE-controlled automatic opening.
 - [x] Windows UI Automation text-field detection and optional sign-in startup.
-- [x] Move, pin and resize the overlay; Minimal mode and adjustable transparency.
+- [x] Move, pin and resize the overlay; adjustable transparency.
 - [x] Add handheld and living-room controller profiles, adjustable pointer speed, mouse controls, hold-to-repeat Backspace, optional haptic feedback, and a compact control layout (v0.3.0).
 - [x] Build and publish v0.3.0 packages for Windows and Linux, including the guided Linux AppImage installer.
 - [x] Add timeouts and cancellation for KDE pointer requests, coalesce pointer movement, and release held mouse buttons during cleanup (v0.3.1).
@@ -372,9 +370,9 @@ kbuildsycoca6 --noincremental
 - [ ] Test sign-in/reboot startup, controller reconnection and multiple displays on target systems.
 - [ ] Broaden compatibility testing across browsers, editors and XWayland applications on Linux, and more applications and controllers on Windows.
 - [ ] Validate compact layout and controller labels on handheld screens and controllers.
-- [x] Make in-app Settings controller-navigable, open Settings by holding the configured shortcut, and default new setups to the Living room profile (v0.5.0 work).
-- [x] Add configurable stick deadzones and controller cursor editing with selection and word navigation (v0.5.0 work).
-- [x] Fix compact Settings layout so controller sliders stay within the window (v0.5.0 work).
+- [x] Make in-app Settings controller-navigable, open Settings by holding the configured shortcut, and default new setups to the Living room profile (v0.5.0).
+- [x] Add configurable stick deadzones and controller cursor editing with selection and word navigation (v0.5.0).
+- [x] Fix compact Settings layout so controller sliders stay within the window (v0.5.0).
 - [ ] Add more languages, layouts and controller-specific button labels.
 - [ ] Test controller-only interaction with KDE's external portal permission prompts.
 - [ ] Improve mouse-mode recovery from sleep/resume and portal failures without requiring an LT cycle.

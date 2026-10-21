@@ -31,9 +31,9 @@ two system-mode instances at the same time because both can read controller
 input.
 
 Windows contributors can follow the build and interactive test instructions in
-the README's **Build from source** section. The native Windows input and focus
-tests need an unlocked interactive Windows desktop, so report clearly which
-checks you could run.
+the README's [Windows instructions](README.md#run-on-windows). The native
+Windows input and focus tests need an unlocked interactive Windows desktop, so
+report clearly which checks you could run.
 
 ## Pull requests
 

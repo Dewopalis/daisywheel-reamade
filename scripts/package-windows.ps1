@@ -1,11 +1,18 @@
 param(
     [string]$BuildDirectory = 'build-ci',
     [string]$ToolchainBin = 'C:\msys64\ucrt64\bin',
-    [string]$Version = '0.5.0'
+    [string]$Version = ''
 )
 $ErrorActionPreference = 'Stop'
-if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version must be MAJOR.MINOR.PATCH' }
 $project = Split-Path $PSScriptRoot -Parent
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $cmakeLists = Get-Content (Join-Path $project 'CMakeLists.txt') -Raw
+    if ($cmakeLists -notmatch 'project\(Daisywheel VERSION (\d+\.\d+\.\d+)') {
+        throw 'Could not determine the project version from CMakeLists.txt'
+    }
+    $Version = $Matches[1]
+}
+if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version must be MAJOR.MINOR.PATCH' }
 $staging = Join-Path $project 'stage-windows'
 $output = Join-Path $project 'dist'
 if (Test-Path $staging) { throw 'stage-windows already exists; use a clean packaging workspace' }
