@@ -2,7 +2,7 @@ name: macOS build
 
 on:
   push:
-    branches: [main, feature/macos-port-v0.6.0]
+    branches: [main, feature/macos-port]
   pull_request:
   workflow_dispatch:
 
