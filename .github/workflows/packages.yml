@@ -69,7 +69,7 @@ jobs:
           desktop-file-validate /usr/share/applications/org.daisywheel.keyboard.desktop
           QT_QPA_PLATFORM=offscreen /usr/bin/daisywheel --smoke-test
       - name: Create AppImage
-        run: bash scripts/package-appimage.sh "$PACKAGE_VERSION" build-ci
+        run: bash scripts/package-appimage.sh build-ci
       - name: Verify AppImage bundled runtime
         run: |
           mkdir -p work/appimage-smoke

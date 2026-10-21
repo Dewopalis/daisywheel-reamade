@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-version=${1:?Usage: package-appimage.sh MAJOR.MINOR.PATCH [build-directory]}
-build=${2:-build-ci}
-[[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 2
 project=$(cd "$(dirname "$0")/.." && pwd)
 cd "$project"
+build=${1:-build-ci}
+version=${PACKAGE_VERSION:-$(sed -nE 's/^project\(Daisywheel VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CMakeLists.txt)}
+[[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Could not determine a numeric project version' >&2; exit 2; }
 tools="$project/work/packaging-tools"
 appdir="$project/work/AppDir"
 [[ ! -e $appdir ]] || { echo 'Use a clean work/AppDir for packaging' >&2; exit 1; }
