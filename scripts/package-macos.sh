@@ -50,8 +50,8 @@ except subprocess.TimeoutExpired:
             sample_file.seek(0)
             sample_output = sample_file.read().decode(errors="replace")
         if sample_output:
-            print("--- process sample (last 12000 characters) ---", file=sys.stderr)
-            print(sample_output[-12000:], file=sys.stderr)
+            print("--- process sample (first 20000 characters) ---", file=sys.stderr)
+            print(sample_output[:20000], file=sys.stderr)
         if sample.stderr:
             print(sample.stderr, end="", file=sys.stderr)
     except (OSError, subprocess.TimeoutExpired) as sample_error:
