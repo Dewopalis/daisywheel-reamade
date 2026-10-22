@@ -48,7 +48,19 @@ echo "Ad-hoc signing the completed app bundle"
 codesign --force --deep --sign - "$app"
 codesign --verify --deep --strict "$app"
 echo "Smoke-testing the packaged app bundle"
-env -u DYLD_LIBRARY_PATH "$executable" --smoke-test
+python3 - "$executable" <<'PY'
+import os
+import subprocess
+import sys
+
+environment = os.environ.copy()
+environment.pop("DYLD_LIBRARY_PATH", None)
+environment["SDL_AUDIODRIVER"] = "dummy"
+try:
+    subprocess.run([sys.argv[1], "--smoke-test"], env=environment, check=True, timeout=30)
+except subprocess.TimeoutExpired as error:
+    raise SystemExit(f"Packaged macOS app smoke test timed out after {error.timeout} seconds")
+PY
 
 case "$(uname -m)" in
   arm64|aarch64) architecture=arm64 ;;
