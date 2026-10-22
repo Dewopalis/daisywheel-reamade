@@ -17,10 +17,9 @@ artifacts. They expire after 14 days. For stable downloads, use
 [GitHub Releases](https://github.com/Dewopalis/daisywheel-reamade/releases):
 tagged builds create drafts, which maintainers test before publishing.
 
-Version [v0.5.1](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.5.1)
-is the current release. The macOS app bundle is not included in that release;
-it will be available in future tagged builds after this pipeline change is
-merged. It is experimental and still needs testing on a physical Mac.
+The [releases page](https://github.com/Dewopalis/daisywheel-reamade/releases)
+lists the current stable release. macOS bundles are experimental and still need
+testing on a physical Mac.
 
 ## Downloads produced
 
@@ -49,12 +48,12 @@ packages are unsigned; the macOS app is ad-hoc signed and not notarized.
    ```bash
    git switch main
    git pull --ff-only origin main
-   git tag v0.5.1
-   git push origin v0.5.1
+   git tag vMAJOR.MINOR.PATCH
+   git push origin vMAJOR.MINOR.PATCH
    ```
 
-   Use the same `vMAJOR.MINOR.PATCH` version as `CMakeLists.txt`. The current
-   development version is `0.5.1`; prerelease suffixes are not supported.
+   Replace `vMAJOR.MINOR.PATCH` with the same version as `CMakeLists.txt`.
+   Prerelease suffixes are not supported.
 4. Wait for Windows, DEB/AppImage, RPM and macOS jobs to succeed. The tag must match
    the CMake version.
 5. Open the draft under GitHub Releases. Download and test the actual installer,
