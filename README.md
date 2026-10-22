@@ -39,10 +39,9 @@ and choose the package for your system:
 The macOS build is still experimental and needs testing on a physical Mac. The
 installation instructions and development builds are further down this page.
 
-**Current status:** controller typing works in other applications on the
-development PCs running Windows and KDE Plasma / Wayland. v0.5.0 adds
-controller-only settings navigation, cursor editing, configurable stick
-deadzones, and a compact settings layout.
+**Current status:** Daisywheel supports controller typing in other applications
+on Windows and KDE Plasma / Wayland. Settings navigation, cursor editing,
+configurable stick deadzones and a compact settings layout are available.
 Touchscreen devices, broader application compatibility and Steam Deck Gaming
 Mode still need testing.
 
@@ -249,7 +248,7 @@ Daisywheel runs as a separate app. It does not register as a replacement touch-k
 
 This registers the current executable with `--windows-input` for **your Windows account**. Administrator rights are not required. The saved automatic-opening preference is restored on launch. Windows may delay startup slightly; this is sign-in startup, not login-screen keyboard support. A full sign-out/reboot test is still outstanding.
 
-If Windows has disabled the app, check **Settings → Apps → Startup** or **Task Manager → Startup apps** for Daisywheel/DaisywheelREAmade and enable it. See [Microsoft's startup-app instructions](https://support.microsoft.com/en-gb/windows/experience/startup-boot/configure-startup-applications-in-windows).
+For startup and input troubleshooting, see the [Windows build and testing guide](docs/windows-build-and-testing.md#troubleshooting).
 
 To remove startup registration, uncheck **Start Daisywheel when I sign in to Windows**. Choosing **Quit** stops the current instance but keeps startup registration and preferences. Turning off automatic opening keeps manual opening available. If you move the app, launch it from the new location and toggle the startup checkbox off and on to update its path.
 
@@ -263,29 +262,10 @@ removing either installation, disable **Start Daisywheel when I sign in to
 Windows** and quit the running instance. To update a source build, rebuild and
 launch it again with `--windows-input`.
 
-### Build from source
+### Build and test from source
 
-Use a matching **Qt 6 / MinGW 64-bit** pair, CMake 3.20+, Ninja and the SDL2 MinGW 64-bit development package. The branch includes `scripts/build-windows.ps1`; it configures, builds, runs the shared wheel tests and deploys runtime DLLs alongside the executables. Its defaults use dependencies in `work/`; supply `-QtRoot`, `-CompilerRoot`, `-SDLRoot`, `-CMake` and `-Ninja` for other installations.
-
-```powershell
-& .\scripts\build-windows.ps1
-Start-Process -FilePath '.\build-windows\daisywheel.exe' -ArgumentList '--controllers' -Wait -RedirectStandardOutput '.\build-windows\controllers.txt'
-Get-Content '.\build-windows\controllers.txt'
-Start-Process -FilePath '.\build-windows\daisywheel.exe' -ArgumentList '--windows-input'
-```
-
-Characters, Space, Backspace and Enter go to the current foreground application. Release physical Shift/Ctrl/Alt/Windows keys before typing. Windows can block input to applications running at a higher privilege level. Secure desktops and login screens are unsupported.
-
-Run the interactive tests on an unlocked Windows desktop:
-
-```powershell
-.\build-windows\windows-input-tests.exe
-.\build-windows\windows-focus-tests.exe
-```
-
-The input test uses a separate native Windows text control to check Unicode including a surrogate pair, Backspace, Enter, self-process rejection and overlay focus preservation. The focus test checks native/Qt editable fields, same-window field identities, read-only fields, buttons, document editors and password fields. Both temporarily focus their own verified fixture windows, including a synthetic mouse click; they do not read user text. Reconnects, browsers, elevated applications and handheld displays require additional testing. A Qt text-field probe reordered a mixed Unicode/emoji string injected as one burst; this remains a compatibility issue before adding multi-character Unicode layouts or prediction.
-
-Validated on the Windows development PC: Release build, shared wheel/visibility tests, isolated native input and UI Automation focus tests, local/system-mode smoke tests, and detection of an accessible mapped Xbox controller. The user also confirmed controller-driven typing into another application. See [Windows development notes](docs/windows-development.md).
+For the Windows toolchain, build script, interactive test programs and current
+testing limits, see the [Windows build and testing guide](docs/windows-build-and-testing.md).
 
 ## Controls
 

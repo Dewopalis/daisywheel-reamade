@@ -18,8 +18,18 @@ assignees: ""
 
 ## What did you test?
 
-For example: opening on text focus, typing, editing, controller-only settings,
-mouse mode, or installing and launching the package.
+Check each area you tried:
+
+- [ ] Install, launch and select Daisywheel as the system keyboard
+- [ ] Open or hide the keyboard, including automatic opening on text focus
+- [ ] Type characters, spaces, backspace and enter
+- [ ] Move the text cursor
+- [ ] Select text or move by words
+- [ ] Use controller mouse mode
+- [ ] Navigate and change settings with the controller
+- [ ] Disconnect and reconnect the controller
+
+Add any extra scenarios here:
 
 ## Result
 
