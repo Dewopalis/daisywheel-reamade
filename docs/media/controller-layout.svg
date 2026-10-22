@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" role="img" aria-labelledby="title description">
+  <title id="title">Daisywheel Xbox-style controller layout</title>
+  <desc id="description">A controller diagram showing that holding LT turns the left stick into a pointer and R1 and R2 into mouse clicks. Holding RT turns the left stick into a text cursor, with LB for selection and RB for word movement. In normal typing mode the stick selects a petal, face buttons type, LB shifts case, RB switches symbols, L3 types a space, R3 backspaces, and Start enters.</desc>
+  <rect width="960" height="500" rx="22" fill="#111827"/>
+  <text x="32" y="38" fill="#e5e7eb" font-family="sans-serif" font-size="19" font-weight="700">Controller shortcut reference</text>
+
+  <g font-family="sans-serif">
+    <rect x="24" y="56" width="444" height="104" rx="14" fill="#172536" stroke="#38bdf8" stroke-width="2"/>
+    <rect x="40" y="72" width="94" height="30" rx="8" fill="#075985"/>
+    <text x="87" y="93" fill="#f0f9ff" font-size="16" font-weight="700" text-anchor="middle">HOLD LT</text>
+    <text x="150" y="91" fill="#e0f2fe" font-size="16" font-weight="700">Controller mouse</text>
+    <text x="40" y="126" fill="#cbd5e1" font-size="14">Left stick: move pointer  ·  R1: left click  ·  R2: right click</text>
+    <text x="40" y="147" fill="#94a3b8" font-size="13">D-pad: faster scroll  ·  Requires visible keyboard and mouse mode.</text>
+
+    <rect x="492" y="56" width="444" height="104" rx="14" fill="#201b35" stroke="#a78bfa" stroke-width="2"/>
+    <rect x="508" y="72" width="94" height="30" rx="8" fill="#5b21b6"/>
+    <text x="555" y="93" fill="#f5f3ff" font-size="16" font-weight="700" text-anchor="middle">HOLD RT</text>
+    <text x="618" y="91" fill="#ede9fe" font-size="16" font-weight="700">Text editing</text>
+    <text x="508" y="126" fill="#cbd5e1" font-size="14">Left stick: move cursor  ·  LB: select  ·  RB: move by words</text>
+    <text x="508" y="147" fill="#94a3b8" font-size="13">Hold LB and RB together to select by words.</text>
+  </g>
+
+  <!-- Xbox-style shell with a flat top and a deep, rounded opening between the grips -->
+  <path d="M410 193 H550 C560 193 570 185 580 188 C610 195 625 220 640 260 C661 310 689 383 668 414 C653 436 632 433 620 420 C590 390 540 350 480 350 C420 350 370 390 340 420 C328 433 307 436 292 414 C271 383 299 310 320 260 C335 220 350 195 380 188 C390 185 400 193 410 193 Z"
+        transform="translate(480 0) scale(0.92 1) translate(-480 0)" fill="#253247" stroke="#64748b" stroke-width="3"/>
+
+  <!-- Bumpers and triggers -->
+  <g font-family="sans-serif" font-size="13" font-weight="700" text-anchor="middle">
+    <rect x="357" y="180" width="66" height="18" rx="8" fill="#334155" stroke="#64748b"/>
+    <text x="390" y="194" fill="#e2e8f0">LB</text>
+    <rect x="537" y="180" width="66" height="18" rx="8" fill="#334155" stroke="#64748b"/>
+    <text x="570" y="194" fill="#e2e8f0">RB</text>
+  </g>
+
+  <!-- D-pad -->
+  <g fill="#0f172a" stroke="#64748b" stroke-width="1.5">
+    <rect x="402" y="277" width="24" height="60" rx="7"/>
+    <rect x="384" y="295" width="60" height="24" rx="7"/>
+  </g>
+
+  <!-- Xbox, View and Menu controls -->
+  <g stroke="#64748b" stroke-width="1.5">
+    <circle cx="480" cy="215" r="13" fill="#111827"/>
+    <path d="M474 209 L486 221 M486 209 L474 221" stroke="#cbd5e1" stroke-width="2"/>
+    <rect x="438" y="244" width="20" height="8" rx="4" fill="#111827"/>
+    <rect x="502" y="244" width="20" height="8" rx="4" fill="#111827"/>
+    <rect x="470" y="265" width="20" height="9" rx="4.5" fill="#111827"/>
+  </g>
+
+  <!-- Sticks -->
+  <g font-family="sans-serif" text-anchor="middle">
+    <circle cx="373" cy="246" r="34" fill="#111827" stroke="#64748b" stroke-width="2"/>
+    <circle cx="373" cy="246" r="22" fill="#334155" stroke="#64748b"/>
+    <text x="373" y="251" fill="#e2e8f0" font-size="14" font-weight="700">LS</text>
+
+    <circle cx="535" cy="300" r="35" fill="#111827" stroke="#64748b" stroke-width="2"/>
+    <circle cx="535" cy="300" r="23" fill="#334155" stroke="#64748b"/>
+    <text x="535" y="305" fill="#e2e8f0" font-size="14" font-weight="700">RS</text>
+  </g>
+
+  <!-- Face buttons use Xbox colors -->
+  <g font-family="sans-serif" font-size="14" font-weight="700" text-anchor="middle">
+    <circle cx="548" cy="246" r="15" fill="#2563eb"/><text x="548" y="251" fill="white">X</text>
+    <circle cx="577" cy="222" r="15" fill="#eab308"/><text x="577" y="227" fill="#111827">Y</text>
+    <circle cx="606" cy="246" r="15" fill="#dc2626"/><text x="606" y="251" fill="white">B</text>
+    <circle cx="577" cy="270" r="15" fill="#16a34a"/><text x="577" y="275" fill="white">A</text>
+  </g>
+
+  <rect x="24" y="438" width="912" height="42" rx="11" fill="#1e293b" stroke="#475569"/>
+  <text x="480" y="464" fill="#e2e8f0" font-family="sans-serif" font-size="14" text-anchor="middle">A/B/X/Y: type  ·  Left stick: select petal  ·  LB: shift  ·  RB: symbols  ·  L3: Space  ·  R3: Backspace  ·  Start: Enter</text>
+</svg>
