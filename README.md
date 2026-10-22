@@ -8,16 +8,20 @@ It is designed for handheld PCs such as the ROG Ally and Steam Deck, as well as 
 
 ## See it in action
 
-The examples below show controller typing, automatic opening on text focus,
-and the window's transparency control.
+The recordings show the keyboard opening on text focus, controller typing,
+window controls, mouse mode and controller-accessible settings.
 
-| Controller typing | Opens on text focus |
+| Opens on text focus | Controller typing |
 | --- | --- |
-| <img src="docs/media/hello-world.gif" alt="Controller typing Hello World into KWrite on KDE Plasma and Wayland" width="420"> | <img src="docs/media/focus-popup.gif" alt="Daisywheel opening when a text field is selected" width="420"> |
+| <img src="docs/media/auto-popup.gif" alt="Daisywheel opening when a text field is selected in Firefox" width="420"> | <img src="docs/media/typing.gif" alt="Typing into KWrite with the Daisywheel controller wheel" width="420"> |
 
-| Transparency control |
+| Dragging and resizing | Controller mouse mode |
+| --- | --- |
+| <img src="docs/media/dragging-resizing.gif" alt="Dragging and resizing the Daisywheel window" width="420"> | <img src="docs/media/mouse-control.gif" alt="Moving the pointer with the controller mouse mode" width="420"> |
+
+| Opening settings with a controller |
 | --- |
-| <img src="docs/media/transparency-slider.gif" alt="Adjusting the Daisywheel transparency slider" width="420"> |
+| <img src="docs/media/opening-settings.gif" alt="Opening and navigating Daisywheel settings with a controller" width="420"> |
 
 **Current status:** controller typing works in other applications on the
 development PCs running Windows and KDE Plasma / Wayland. v0.5.0 adds
