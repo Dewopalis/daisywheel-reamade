@@ -7,6 +7,13 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS Widgets)
 find_package(SDL2 REQUIRED CONFIG)
 add_executable(daisywheel src/main.cpp src/overlaywidgets.h src/settingsnavigation.cpp src/settingsnavigation.h src/soundeffects.cpp src/soundeffects.h)
 target_link_libraries(daisywheel PRIVATE Qt6::Widgets SDL2::SDL2)
+if(APPLE)
+  set_target_properties(daisywheel PROPERTIES
+    MACOSX_BUNDLE TRUE
+    MACOSX_BUNDLE_GUI_IDENTIFIER org.daisywheel.reamade
+    MACOSX_BUNDLE_BUNDLE_NAME "Daisywheel REAmade"
+  )
+endif()
 if(UNIX AND NOT APPLE)
   target_sources(daisywheel PRIVATE src/appimageinstaller.cpp src/portalpointer.cpp src/portalpointer.h)
   find_package(Qt6 REQUIRED COMPONENTS WaylandClient DBus)
@@ -22,7 +29,10 @@ if(UNIX AND NOT APPLE)
   target_compile_definitions(daisywheel PRIVATE DAISYWHEEL_KDE)
   target_compile_options(daisywheel PRIVATE -include wayland-client-protocol.h)
 endif()
-install(TARGETS daisywheel RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS daisywheel
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  BUNDLE DESTINATION .
+)
 install(FILES README.md LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/daisywheel-reamade)
 if(UNIX AND NOT APPLE)
   install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/daisywheel-reamade
