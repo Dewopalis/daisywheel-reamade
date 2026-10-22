@@ -2,7 +2,7 @@ name: Build packages
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/macos-port]
     tags: ['v*']
     # Branch pushes with documentation-only changes are skipped. Tag pushes
     # still run because GitHub does not evaluate path filters for tags.
@@ -10,9 +10,6 @@ on:
       - '**/*.md'
       - 'docs/**'
   pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -23,7 +20,42 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      build_required: ${{ steps.filter.outputs.build_required }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - id: filter
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$EVENT_NAME" != 'pull_request' ]]; then
+            echo 'build_required=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed_files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          build_required=false
+          if [[ -z "$changed_files" ]]; then
+            build_required=true
+          else
+            while IFS= read -r path; do
+              case "$path" in
+                docs/*|*.md|README*|CONTRIBUTING*|CHANGELOG*) ;;
+                *) build_required=true; break ;;
+              esac
+            done <<< "$changed_files"
+          fi
+          echo "build_required=$build_required" >> "$GITHUB_OUTPUT"
+
   version:
+    needs: changes
+    if: needs.changes.outputs.build_required == 'true'
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -49,7 +81,8 @@ jobs:
           PY
 
   deb-appimage:
-    needs: version
+    if: needs.changes.outputs.build_required == 'true' && github.ref != 'refs/heads/feature/macos-port'
+    needs: [changes, version]
     runs-on: ubuntu-24.04
     container: debian:13
     timeout-minutes: 35
@@ -96,7 +129,8 @@ jobs:
           retention-days: 14
 
   rpm:
-    needs: version
+    if: needs.changes.outputs.build_required == 'true' && github.ref != 'refs/heads/feature/macos-port'
+    needs: [changes, version]
     runs-on: ubuntu-24.04
     container: fedora:43
     timeout-minutes: 30
@@ -124,7 +158,8 @@ jobs:
           retention-days: 14
 
   windows:
-    needs: version
+    if: needs.changes.outputs.build_required == 'true' && github.ref != 'refs/heads/feature/macos-port'
+    needs: [changes, version]
     runs-on: windows-2022
     timeout-minutes: 45
     steps:
@@ -164,9 +199,39 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  macos:
+    if: needs.changes.outputs.build_required == 'true'
+    needs: [changes, version]
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: brew install cmake ninja qt@6 sdl2
+      - name: Configure
+        run: >-
+          cmake -S . -B build-ci -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH="$(brew --prefix qt@6);$(brew --prefix sdl2)"
+      - name: Build and test
+        run: |
+          cmake --build build-ci --parallel 3
+          ctest --test-dir build-ci --output-on-failure
+          ./build-ci/daisywheel.app/Contents/MacOS/daisywheel --smoke-test
+      - name: Package macOS app
+        env:
+          PACKAGE_VERSION: ${{ needs.version.outputs.version }}
+        run: bash scripts/package-macos.sh build-ci "$PACKAGE_VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ runner.arch }}
+          path: dist/*-macos-*.*
+          if-no-files-found: error
+          retention-days: 14
+
   draft-release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [version, deb-appimage, rpm, windows]
+    needs: [version, deb-appimage, rpm, windows, macos]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -182,7 +247,7 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           cd dist
-          sha256sum *.exe *.zip *.deb *.rpm *.AppImage > SHA256SUMS.txt
+          sha256sum *.exe *.zip *.deb *.rpm *.AppImage *.dmg > SHA256SUMS.txt
           if draft=$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' 2>/dev/null); then
             test "$draft" = true || { echo 'Refusing to replace assets on a published release'; exit 1; }
           else

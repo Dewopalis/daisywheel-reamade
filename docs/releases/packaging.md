@@ -1,7 +1,8 @@
 # Binary builds and releases
 
-The `Build packages` workflow builds x86-64 downloads using GitHub Actions.
-PRs, pushes to `main`, and manual workflow runs upload test artifacts. Tags of
+The `Build packages` workflow builds x86-64 downloads and an experimental macOS
+app bundle using GitHub Actions. PRs, pushes to `main`, and manual workflow runs
+upload test artifacts. Tags of
 the form `vMAJOR.MINOR.PATCH` additionally create a **draft** GitHub release after
 every build succeeds. No personal access token or repository secret is needed;
 the release job uses GitHub's scoped automatic token.
@@ -16,10 +17,10 @@ artifacts. They expire after 14 days. For stable downloads, use
 [GitHub Releases](https://github.com/Dewopalis/daisywheel-reamade/releases):
 tagged builds create drafts, which maintainers test before publishing.
 
-Version [v0.5.0](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.5.0)
-is the current release. Its release workflow builds the Windows, DEB/AppImage
-and RPM packages and runs their installation and startup checks. Testing across
-more target devices and applications remains ongoing.
+Version [v0.5.1](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.5.1)
+is the current release. The macOS app bundle is not included in that release;
+it will be available in future tagged builds after this pipeline change is
+merged. It is experimental and still needs testing on a physical Mac.
 
 ## Downloads produced
 
@@ -30,12 +31,14 @@ more target devices and applications remains ongoing.
 | `.deb` | Debian 13, system Qt 6.8 / LayerShellQt 6.3 | Debian 13 KDE/Wayland; package manager installs runtime dependencies |
 | `.rpm` | Fedora 43, system Qt/LayerShellQt | Fedora 43 KDE/Wayland; dependency-compatible later releases need validation |
 | `.AppImage` | Debian 13; Qt, SDL2 and LayerShellQt bundled | KDE/Wayland, x86-64, glibc 2.41+; older distributions are not supported by this build |
+| macOS `.dmg` and `.zip` | macOS 15 runner; Qt and SDL2 included in the app bundle | Experimental; physical Mac testing pending. Not notarized, so macOS may require manual approval on first launch |
 
 AppImage is the intended download for current CachyOS/Arch users. It does not
 make system-input support available on other desktops or Steam Deck Gaming Mode.
-The hosted v0.3.0 package workflow passed its CI installation and startup checks;
-manual testing on target systems is still needed before promising broader device
-or application compatibility. Windows and Linux packages are currently unsigned.
+The hosted package workflow runs installation and startup checks for Linux and
+Windows. The macOS bundle receives CI build and smoke tests, but needs manual
+testing on a Mac before broader compatibility can be claimed. Windows and Linux
+packages are unsigned; the macOS app is ad-hoc signed and not notarized.
 
 ## Create a release
 
@@ -52,13 +55,13 @@ or application compatibility. Windows and Linux packages are currently unsigned.
 
    Use the same `vMAJOR.MINOR.PATCH` version as `CMakeLists.txt`. The current
    development version is `0.5.1`; prerelease suffixes are not supported.
-4. Wait for Windows, DEB/AppImage and RPM jobs to succeed. The tag must match
+4. Wait for Windows, DEB/AppImage, RPM and macOS jobs to succeed. The tag must match
    the CMake version.
 5. Open the draft under GitHub Releases. Download and test the actual installer,
-   portable ZIP, native packages and AppImage; check controller typing, focus,
-   activation policies and restart startup on the intended machines.
+   portable ZIP, native packages, AppImage and macOS app bundle; check controller
+   typing, focus, activation policies and restart startup on the intended machines.
 6. Edit the release notes and publish the reviewed draft. `SHA256SUMS.txt`
-   contains checksums for all five downloads.
+   contains checksums for all seven downloads.
 
 Build jobs have read-only repository permission. Only the tag-triggered release
 job gets `contents: write`. Pull requests cannot publish releases. Artifacts
