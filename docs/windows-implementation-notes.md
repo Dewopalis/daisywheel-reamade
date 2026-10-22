@@ -1,8 +1,12 @@
-# Windows development — 14 October 2026
+# Windows input and focus implementation notes
 
-Branch: `windows-integration`.
+Initial implementation work took place on the `windows-integration` branch.
+This page records its design and validation details. For current build and test
+instructions, see [Windows build and testing](windows-build-and-testing.md).
 
-The README roadmap guides this branch: Windows text/control-key delivery, a nonactivating overlay, activation and startup configuration. Packaging, broader application validation and handheld testing remain separate work.
+The work covered Windows text and control-key delivery, a nonactivating
+overlay, activation and startup configuration. Packaging, broader application
+validation and handheld testing remain separate work.
 
 ## Implemented
 
