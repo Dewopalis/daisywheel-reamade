@@ -33,7 +33,7 @@ Download the [latest release](https://github.com/Dewopalis/daisywheel-reamade/re
 | Debian / Ubuntu | `.deb` |
 | Fedora | `.rpm` |
 | Arch / CachyOS and other Linux distributions | `.AppImage` |
-| macOS | Experimental `.dmg` / `.zip` from [GitHub Actions](https://github.com/Dewopalis/daisywheel-reamade/actions/workflows/packages.yml); no stable release yet |
+| macOS | Experimental `.dmg` / `.zip` from the latest release; physical Mac testing is still needed |
 
 For macOS, physical Mac testing is still needed. See the [installation guide](docs/installation.md) for setup and update instructions.
 

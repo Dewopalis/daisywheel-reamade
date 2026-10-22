@@ -80,11 +80,10 @@ The system keyboard integration currently targets KDE Plasma on Wayland. See
 
 ## macOS
 
-The experimental `.dmg` and `.zip` are available from the [macOS workflow](https://github.com/Dewopalis/daisywheel-reamade/actions/workflows/packages.yml),
-not from the stable release. Open the `.dmg` and drag Daisywheel REAmade to
-Applications. The app is not notarized, so macOS may ask you to approve it on
-first launch. It has CI build and launch testing but still needs testing on a
-physical Mac.
+The experimental `.dmg` and `.zip` are available from the [latest release](https://github.com/Dewopalis/daisywheel-reamade/releases/latest).
+Open the `.dmg` and drag Daisywheel REAmade to Applications. The app is not
+notarized, so macOS may ask you to approve it on first launch. It has CI build
+and launch testing but still needs testing on a physical Mac.
 
 ## Update, remove or change keyboard settings on KDE
 
