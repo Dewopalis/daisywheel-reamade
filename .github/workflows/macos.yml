@@ -3,7 +3,13 @@ name: macOS build
 on:
   push:
     branches: [main, feature/macos-port]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:

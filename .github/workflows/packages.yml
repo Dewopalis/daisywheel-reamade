@@ -4,7 +4,15 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+    # Branch pushes with documentation-only changes are skipped. Tag pushes
+    # still run because GitHub does not evaluate path filters for tags.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
