@@ -3,6 +3,7 @@
 #include "visibility.h"
 #include "placement.h"
 #include "settingsnavigation.h"
+#include "pointerbuttonstate.h"
 #include "soundeffects.h"
 #include <QApplication>
 #include <QWidget>
@@ -639,18 +640,14 @@ int main(int argc,char **argv){
     backspaceRepeatTimer.setSingleShot(true);
     bool backspaceHeld=false;
     bool pointerMode=false;
-    bool rightTriggerClickHeld=false;
+#ifdef DAISYWHEEL_KDE
+    Uint32 portalRetryAt=0;
+#endif
     Uint32 pointerLastTick=SDL_GetTicks();
     double pointerRemainderX=0.0,pointerRemainderY=0.0;
-    QList<Uint8> heldPointerButtons;
+    PointerButtonState pointerButtons;
     auto releaseMouseButtons=[&]{
-        for(Uint8 button:heldPointerButtons)
-            pointerButton(button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,false);
-        heldPointerButtons.clear();
-        if(rightTriggerClickHeld){
-            pointerButton(false,false);
-            rightTriggerClickHeld=false;
-        }
+        for(bool left:pointerButtons.releaseAll())pointerButton(left,false);
     };
     QObject::connect(&app,&QCoreApplication::aboutToQuit,&app,[&]{
         releaseMouseButtons();
@@ -704,9 +701,8 @@ int main(int argc,char **argv){
                     if(event.cbutton.button==SDL_CONTROLLER_BUTTON_RIGHTSTICK){
                         backspaceHeld=false;backspaceRepeatTimer.stop();backspaceRepeatTimer.setSingleShot(true);
                     }
-                    if(heldPointerButtons.contains(event.cbutton.button)){
-                        pointerButton(event.cbutton.button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,false);
-                        heldPointerButtons.removeAll(event.cbutton.button);
+                    if(event.cbutton.button==SDL_CONTROLLER_BUTTON_RIGHTSHOULDER&&pointerButtons.release(true)){
+                        pointerButton(true,false);
                     }
                     if(event.cbutton.button==shortcutButton&&shortcutButtonDown){
                         const Uint32 held=SDL_GetTicks()-shortcutPressedAt;
@@ -767,8 +763,7 @@ int main(int argc,char **argv){
                 if(mouseModifier){
                     switch(event.cbutton.button){
                     case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
-                        pointerButton(true,true);
-                        if(!heldPointerButtons.contains(event.cbutton.button))heldPointerButtons.append(event.cbutton.button);
+                        if(pointerButtons.press(true))pointerButton(true,true);
                         soundEffects.buttonPressed();
                         if(haptic)haptic(35);
                         break;
@@ -814,17 +809,30 @@ int main(int argc,char **argv){
         }
         bool mouseModeNow=controller&&systemMode&&window.isVisible()&&view->isVisible()&&mouseModeEnabled->isChecked()&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERLEFT)>16000;
         const bool rightTriggerClickNow=mouseModeNow&&SDL_GameControllerGetAxis(controller,SDL_CONTROLLER_AXIS_TRIGGERRIGHT)>16000;
-        if(rightTriggerClickNow!=rightTriggerClickHeld){
+        if(rightTriggerClickNow!=pointerButtons.isHeld(false)){
+            if(rightTriggerClickNow)pointerButtons.press(false);
+            else pointerButtons.release(false);
             pointerButton(false,rightTriggerClickNow);
             if(rightTriggerClickNow)soundEffects.buttonPressed();
             if(rightTriggerClickNow&&haptic)haptic(35);
         }
-        rightTriggerClickHeld=rightTriggerClickNow;
         if(mouseModeNow&&!pointerMode){
 #ifdef DAISYWHEEL_KDE
-            if(portalPointer)portalPointer->requestAccess();
+            if(portalPointer){
+                portalPointer->requestAccess();
+                portalRetryAt=SDL_GetTicks()+2000;
+            }
 #endif
         }
+#ifdef DAISYWHEEL_KDE
+        if(mouseModeNow&&portalPointer&&portalPointer->recoveryRecommended()
+           &&static_cast<Sint32>(SDL_GetTicks()-portalRetryAt)>=0){
+            portalRetryAt=SDL_GetTicks()+2000;
+            portalPointer->requestAccess();
+        }else if(!mouseModeNow){
+            portalRetryAt=0;
+        }
+#endif
         if(mouseModeNow!=pointerMode){
             if(!mouseModeNow)releaseMouseButtons();
 #ifdef Q_OS_WIN

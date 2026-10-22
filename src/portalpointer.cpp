@@ -18,7 +18,9 @@ constexpr auto remoteDesktopInterface="org.freedesktop.portal.RemoteDesktop";
 constexpr auto requestInterface="org.freedesktop.portal.Request";
 constexpr auto sessionInterface="org.freedesktop.portal.Session";
 constexpr int requestTimeoutMs=60000;
+constexpr int pointerEventTimeoutMs=5000;
 constexpr double maxQueuedMotion=300.0;
+constexpr int maxQueuedScrollSteps=12;
 
 QString token(){
     return QString::number(QRandomGenerator::global()->generate64(),16);
@@ -113,7 +115,8 @@ void PortalPointer::callRequest(quint64 generation,const QString &method,
         signalReceiver->deleteLater();
         if(generation==sessionGeneration){
             isRequesting=false;
-            setStatus("Could not monitor KDE pointer permission response");
+            shouldRecover=true;
+            setStatus("Could not monitor KDE pointer permission response · recovering while LT is held");
             closeSession();
         }
         return;
@@ -170,7 +173,8 @@ void PortalPointer::callRequest(quint64 generation,const QString &method,
                 receiverGuard->callback={};
                 receiverGuard->deleteLater();
                 isRequesting=false;
-                setStatus("Could not monitor KDE pointer permission response");
+                shouldRecover=true;
+                setStatus("Could not monitor KDE pointer permission response · recovering while LT is held");
                 closeSession();
             }
             return;
@@ -186,7 +190,8 @@ void PortalPointer::callRequest(quint64 generation,const QString &method,
         pendingRequests.remove(requestPath);
         if(generation!=sessionGeneration)return;
         isRequesting=false;
-        setStatus(QString("Pointer permission unavailable: %1").arg(reply.error().message()));
+        shouldRecover=true;
+        setStatus(QString("Pointer request failed: %1 · recovering while LT is held").arg(reply.error().message()));
         closeSession();
     });
 }
@@ -194,8 +199,10 @@ void PortalPointer::callRequest(quint64 generation,const QString &method,
 void PortalPointer::requestAccess(){
     if(isActive){setStatus("Controller mouse ready · hold LT to use");return;}
     if(isRequesting)return;
+    shouldRecover=false;
     if(!QDBusConnection::sessionBus().isConnected()){
-        setStatus("KDE desktop session bus is unavailable · release LT and retry");return;
+        shouldRecover=true;
+        setStatus("KDE desktop session bus is unavailable · retrying while LT is held");return;
     }
     isRequesting=true;
     const quint64 generation=++sessionGeneration;
@@ -210,7 +217,8 @@ void PortalPointer::createSession(quint64 generation){
     callRequest(generation,"CreateSession",{options},[this,generation](uint code,const QVariantMap &results){
         if(code!=0){
             isRequesting=false;
-            setStatus("KDE did not create a pointer session");
+            shouldRecover=true;
+            setStatus("KDE did not create a pointer session · retrying while LT is held");
             return;
         }
         const QVariant handle=portalValue(results,"session_handle");
@@ -294,7 +302,7 @@ void PortalPointer::sendPendingMotion(quint64 generation){
     motionInFlight=true;
     const QDBusMessage call=remoteDesktopCall(sessionHandle,"NotifyPointerMotion",
                                                {QVariantMap{},dx,dy});
-    auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call),this);
+    auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call,pointerEventTimeoutMs),this);
     connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,generation]{
         QDBusPendingReply<> reply=*watcher;
         watcher->deleteLater();
@@ -308,48 +316,76 @@ void PortalPointer::sendPendingMotion(quint64 generation){
     });
 }
 
-void PortalPointer::sendButton(int button,bool pressed,quint64 generation){
+void PortalPointer::sendButton(int button,quint64 generation){
     if(sessionHandle.isEmpty()||generation!=sessionGeneration)return;
+    auto state=buttons.find(button);
+    if(state==buttons.end()||state->inFlight||state->desired==state->confirmed)return;
+    const bool pressed=state->desired;
+    state->inFlight=true;
+    if(pressed)state->mayBeDown=true;
     const QDBusMessage call=remoteDesktopCall(sessionHandle,"NotifyPointerButton",
                                                {QVariantMap{},button,uint(pressed?1:0)});
-    auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call),this);
-    connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,generation]{
+    auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call,pointerEventTimeoutMs),this);
+    connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,generation,button,pressed]{
         QDBusPendingReply<> reply=*watcher;
         watcher->deleteLater();
-        if(generation!=sessionGeneration||!reply.isError())return;
-        failSession(QString("KDE rejected pointer button input: %1").arg(reply.error().message()),generation);
+        if(generation!=sessionGeneration)return;
+        auto state=buttons.find(button);
+        if(state==buttons.end())return;
+        state->inFlight=false;
+        if(reply.isError()){
+            // The portal may have received a press even if its reply was lost.
+            // Preserve it for closeSession()'s best-effort release.
+            state->mayBeDown=true;
+            failSession(QString("KDE rejected pointer button input: %1").arg(reply.error().message()),generation);
+            return;
+        }
+        state->confirmed=pressed;
+        if(!pressed)state->mayBeDown=false;
+        if(state->desired!=state->confirmed)sendButton(button,generation);
     });
 }
 
 void PortalPointer::button(bool left,bool pressed){
     if(!isActive)return;
     const int code=left?0x110:0x111;
-    if(pressed){
-        if(heldButtons.contains(code))return;
-        heldButtons.insert(code);
-    }else{
-        if(!heldButtons.remove(code))return;
-    }
-    sendButton(code,pressed,sessionGeneration);
+    auto &state=buttons[code];
+    if(state.desired==pressed)return;
+    state.desired=pressed;
+    sendButton(code,sessionGeneration);
 }
 
 void PortalPointer::scroll(int steps){
     if(!isActive||steps==0)return;
-    const quint64 generation=sessionGeneration;
+    pendingScrollSteps=qBound(-maxQueuedScrollSteps,pendingScrollSteps+steps,maxQueuedScrollSteps);
+    sendPendingScroll(sessionGeneration);
+}
+
+void PortalPointer::sendPendingScroll(quint64 generation){
+    if(!isActive||scrollInFlight||generation!=sessionGeneration||pendingScrollSteps==0)return;
+    const int steps=pendingScrollSteps;
+    pendingScrollSteps=0;
     const QDBusMessage call=remoteDesktopCall(sessionHandle,"NotifyPointerAxisDiscrete",
                                                {QVariantMap{},uint(0),int(steps)});
-    auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call),this);
+    scrollInFlight=true;
+    auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call,pointerEventTimeoutMs),this);
     connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,generation]{
         QDBusPendingReply<> reply=*watcher;
         watcher->deleteLater();
-        if(generation==sessionGeneration&&reply.isError())
+        if(generation!=sessionGeneration)return;
+        scrollInFlight=false;
+        if(reply.isError()){
             failSession(QString("KDE rejected pointer scrolling: %1").arg(reply.error().message()),generation);
+            return;
+        }
+        sendPendingScroll(generation);
     });
 }
 
 void PortalPointer::failSession(const QString &message,quint64 generation){
     if(generation!=sessionGeneration)return;
-    setStatus(message+" · release LT and retry");
+    shouldRecover=true;
+    setStatus(message+" · recovering while LT is held");
     closeSession();
 }
 
@@ -376,13 +412,15 @@ void PortalPointer::closeSession(){
     isRequesting=false;
     cancelPendingRequests();
     pendingMotionX=pendingMotionY=0.0;
+    pendingScrollSteps=0;
     motionInFlight=false;
+    scrollInFlight=false;
     if(!sessionHandle.isEmpty()){
         if(isActive){
-            const auto buttons=heldButtons;
-            for(int button:buttons){
+            for(auto it=buttons.cbegin();it!=buttons.cend();++it){
+                if(!it->desired&&!it->confirmed&&!it->mayBeDown)continue;
                 const QDBusMessage release=remoteDesktopCall(
-                    sessionHandle,"NotifyPointerButton",{QVariantMap{},button,uint(0)});
+                    sessionHandle,"NotifyPointerButton",{QVariantMap{},it.key(),uint(0)});
                 QDBusConnection::sessionBus().asyncCall(release);
             }
         }
@@ -398,7 +436,7 @@ void PortalPointer::closeSession(){
         QDBusConnection::sessionBus().asyncCall(call);
     }
     sessionHandle.clear();
-    heldButtons.clear();
+    buttons.clear();
     isActive=false;
 }
 
@@ -411,8 +449,11 @@ void PortalPointer::sessionClosed(){
     isActive=false;
     motionInFlight=false;
     pendingMotionX=pendingMotionY=0.0;
-    heldButtons.clear();
-    setStatus("KDE pointer session ended; release LT and try again");
+    pendingScrollSteps=0;
+    scrollInFlight=false;
+    shouldRecover=true;
+    buttons.clear();
+    setStatus("KDE pointer session ended · recovering while LT is held");
 }
 
 #include "portalpointer.moc"
