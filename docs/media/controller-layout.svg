@@ -52,12 +52,10 @@
     <circle cx="373" cy="246" r="34" fill="#111827" stroke="#64748b" stroke-width="2"/>
     <circle cx="373" cy="246" r="22" fill="#334155" stroke="#64748b"/>
     <text x="373" y="251" fill="#e2e8f0" font-size="14" font-weight="700">LS</text>
-    <text x="373" y="413" fill="#94a3b8" font-size="12">L3: Space</text>
 
     <circle cx="535" cy="300" r="35" fill="#111827" stroke="#64748b" stroke-width="2"/>
     <circle cx="535" cy="300" r="23" fill="#334155" stroke="#64748b"/>
     <text x="535" y="305" fill="#e2e8f0" font-size="14" font-weight="700">RS</text>
-    <text x="535" y="413" fill="#94a3b8" font-size="12">R3: Backspace (hold repeats)</text>
   </g>
 
   <!-- Face buttons use Xbox colors -->
