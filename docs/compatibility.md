@@ -17,6 +17,10 @@ Steam Deck Gaming Mode, and GNOME or X11 system-keyboard integration remain
 unverified or unsupported. The Windows test coverage includes native and Qt
 controls, but broader browser and handheld testing is still needed.
 
+The [roadmap's proposed v1.0 platform policy](roadmap.md#proposed-v10-platform-policy)
+describes intended support targets and the evidence still needed. It is a plan,
+not a claim that those environments have already passed validation.
+
 ## Submit a test report
 
 Please [open a compatibility report](https://github.com/Dewopalis/daisywheel-reamade/issues/new?template=compatibility_report.md)
