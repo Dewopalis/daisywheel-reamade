@@ -20,8 +20,8 @@
     <text x="508" y="147" fill="#94a3b8" font-size="13">Hold LB and RB together to select by words.</text>
   </g>
 
-  <!-- Generic Xbox-style controller silhouette -->
-  <path d="M267 210 C282 193 316 191 345 202 L444 230 H516 L615 202 C644 191 678 193 693 210 C718 221 733 239 748 259 C773 289 803 331 818 352 C840 384 779 415 748 405 C714 394 689 368 665 350 C641 364 606 385 565 385 H397 C356 385 319 364 295 350 C271 368 246 394 212 405 C181 415 161 381 182 347 Z"
+  <!-- Rounded Xbox-style body with low, curved handles -->
+  <path d="M267 210 C282 193 316 191 345 202 L444 230 H516 L615 202 C644 191 678 193 693 210 C718 221 733 239 748 259 C773 289 803 331 818 352 C840 384 779 415 748 405 C714 394 680 350 665 350 C650 350 620 385 565 385 H397 C342 385 312 350 295 350 C271 350 246 394 212 405 C181 415 161 381 182 347 Z"
         fill="#253247" stroke="#64748b" stroke-width="3"/>
 
   <!-- Bumpers and triggers -->
@@ -36,6 +36,14 @@
   <g fill="#0f172a" stroke="#64748b" stroke-width="1.5">
     <rect x="266" y="277" width="30" height="92" rx="7"/>
     <rect x="235" y="308" width="92" height="30" rx="7"/>
+  </g>
+
+  <!-- Xbox, View and Menu controls -->
+  <g stroke="#64748b" stroke-width="1.5">
+    <circle cx="480" cy="273" r="15" fill="#111827"/>
+    <path d="M473 266 L487 280 M487 266 L473 280" stroke="#cbd5e1" stroke-width="2"/>
+    <rect x="447" y="301" width="22" height="9" rx="4.5" fill="#111827"/>
+    <rect x="491" y="301" width="22" height="9" rx="4.5" fill="#111827"/>
   </g>
 
   <!-- Sticks -->
