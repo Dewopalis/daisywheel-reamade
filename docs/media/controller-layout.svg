@@ -10,7 +10,7 @@
     <text x="87" y="93" fill="#f0f9ff" font-size="16" font-weight="700" text-anchor="middle">HOLD LT</text>
     <text x="150" y="91" fill="#e0f2fe" font-size="16" font-weight="700">Controller mouse</text>
     <text x="40" y="126" fill="#cbd5e1" font-size="14">Left stick: move pointer  ·  R1: left click  ·  R2: right click</text>
-    <text x="40" y="147" fill="#94a3b8" font-size="13">Only active while the keyboard is visible and mouse mode is enabled.</text>
+    <text x="40" y="147" fill="#94a3b8" font-size="13">D-pad: faster scroll  ·  Only active while visible with mouse mode enabled.</text>
 
     <rect x="492" y="56" width="444" height="104" rx="14" fill="#201b35" stroke="#a78bfa" stroke-width="2"/>
     <rect x="508" y="72" width="94" height="30" rx="8" fill="#5b21b6"/>
@@ -21,7 +21,7 @@
   </g>
 
   <!-- Generic Xbox-style controller silhouette -->
-  <path d="M267 210 C282 193 316 191 345 202 L444 230 H516 L615 202 C644 191 678 193 693 210 L778 347 C799 381 779 415 748 405 L665 350 H295 L212 405 C181 415 161 381 182 347 Z"
+  <path d="M267 210 C282 193 316 191 345 202 L444 230 H516 L615 202 C644 191 678 193 693 210 C718 221 733 239 748 259 C773 289 803 331 818 352 C840 384 779 415 748 405 C714 394 689 368 665 350 C641 377 606 397 565 397 H397 C356 397 319 377 295 350 C271 368 246 394 212 405 C181 415 161 381 182 347 Z"
         fill="#253247" stroke="#64748b" stroke-width="3"/>
 
   <!-- Bumpers and triggers -->
@@ -37,7 +37,6 @@
     <rect x="266" y="277" width="30" height="92" rx="7"/>
     <rect x="235" y="308" width="92" height="30" rx="7"/>
   </g>
-  <text x="281" y="393" fill="#94a3b8" font-family="sans-serif" font-size="12" text-anchor="middle">LT + D-pad: faster scroll</text>
 
   <!-- Sticks -->
   <g font-family="sans-serif" text-anchor="middle">
@@ -54,13 +53,12 @@
 
   <!-- Face buttons use Xbox colors -->
   <g font-family="sans-serif" font-size="14" font-weight="700" text-anchor="middle">
-    <circle cx="718" cy="297" r="18" fill="#2563eb"/><text x="718" y="302" fill="white">X</text>
-    <circle cx="757" cy="258" r="18" fill="#eab308"/><text x="757" y="263" fill="#111827">Y</text>
-    <circle cx="796" cy="297" r="18" fill="#dc2626"/><text x="796" y="302" fill="white">B</text>
-    <circle cx="757" cy="336" r="18" fill="#16a34a"/><text x="757" y="341" fill="white">A</text>
+    <circle cx="683" cy="297" r="18" fill="#2563eb"/><text x="683" y="302" fill="white">X</text>
+    <circle cx="722" cy="258" r="18" fill="#eab308"/><text x="722" y="263" fill="#111827">Y</text>
+    <circle cx="761" cy="297" r="18" fill="#dc2626"/><text x="761" y="302" fill="white">B</text>
+    <circle cx="722" cy="336" r="18" fill="#16a34a"/><text x="722" y="341" fill="white">A</text>
   </g>
-  <text x="757" y="377" fill="#94a3b8" font-family="sans-serif" font-size="12" text-anchor="middle">Type character</text>
 
   <rect x="24" y="438" width="912" height="42" rx="11" fill="#1e293b" stroke="#475569"/>
-  <text x="480" y="464" fill="#e2e8f0" font-family="sans-serif" font-size="14" text-anchor="middle">Normal typing: left stick selects petal  ·  LB: shift  ·  RB: symbols  ·  Start: Enter</text>
+  <text x="480" y="464" fill="#e2e8f0" font-family="sans-serif" font-size="14" text-anchor="middle">A/B/X/Y: type  ·  Left stick: select petal  ·  LB: shift  ·  RB: symbols  ·  L3: Space  ·  R3: Backspace  ·  Start: Enter</text>
 </svg>
