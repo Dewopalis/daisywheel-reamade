@@ -13,7 +13,9 @@ if [[ ! -d "$app" || ! -x "$executable" ]]; then
   exit 1
 fi
 
-"$qt_prefix/bin/macdeployqt" "$app" -always-overwrite -libpath="$sdl2_prefix/lib"
+"$qt_prefix/bin/macdeployqt" "$app" -always-overwrite -no-codesign \
+  -libpath="$qt_prefix/lib" -libpath="$(brew --prefix qtbase)/lib" \
+  -libpath="$sdl2_prefix/lib"
 
 sdl2_load_path="$(otool -L "$executable" | awk '$1 ~ /libSDL2[^ ]*\.dylib$/ { print $1; exit }')"
 if [[ -z "$sdl2_load_path" ]]; then
@@ -42,8 +44,10 @@ fi
 
 # The bundle is unsigned for distribution and will need manual approval on
 # first launch until the project has an Apple Developer ID and notarization.
+echo "Ad-hoc signing the completed app bundle"
 codesign --force --deep --sign - "$app"
 codesign --verify --deep --strict "$app"
+echo "Smoke-testing the packaged app bundle"
 env -u DYLD_LIBRARY_PATH "$executable" --smoke-test
 
 case "$(uname -m)" in
