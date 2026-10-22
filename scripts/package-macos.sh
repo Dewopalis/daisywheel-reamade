@@ -61,13 +61,10 @@ if otool -L "$executable" | grep -E '/opt/homebrew/|/usr/local/opt/'; then
   exit 1
 fi
 
-# The bundle is unsigned for distribution and will need manual approval on
-# first launch until the project has an Apple Developer ID and notarization.
-echo "Ad-hoc signing the completed app bundle"
-codesign --force --deep --sign - "$app"
-codesign --verify --deep --strict "$app"
-echo "Smoke-testing the packaged app bundle"
-python3 - "$executable" <<'PY'
+smoke_test_bundle() {
+  local stage="$1"
+  echo "Smoke-testing packaged app bundle ($stage)"
+  python3 - "$executable" "$stage" <<'PY'
 import os
 import subprocess
 import sys
@@ -76,6 +73,7 @@ environment = os.environ.copy()
 environment.pop("DYLD_LIBRARY_PATH", None)
 environment["SDL_AUDIODRIVER"] = "dummy"
 environment["QT_DEBUG_PLUGINS"] = "1"
+stage = sys.argv[2]
 try:
     result = subprocess.run(
         [sys.argv[1], "--smoke-test"],
@@ -86,7 +84,7 @@ try:
         timeout=20,
     )
 except subprocess.TimeoutExpired as error:
-    print(f"Packaged macOS app smoke test timed out after {error.timeout} seconds", file=sys.stderr)
+    print(f"Packaged macOS app smoke test timed out after {error.timeout} seconds ({stage})", file=sys.stderr)
     for stream_name, stream in (("stdout", error.stdout), ("stderr", error.stderr)):
         if stream:
             if isinstance(stream, bytes):
@@ -99,6 +97,17 @@ if result.stdout:
 if result.stderr:
     print(result.stderr, end="", file=sys.stderr)
 PY
+}
+
+# This first launch separates deployment and install-name changes from signing.
+smoke_test_bundle "before signing"
+
+# The bundle is unsigned for distribution and will need manual approval on
+# first launch until the project has an Apple Developer ID and notarization.
+echo "Ad-hoc signing the completed app bundle"
+codesign --force --deep --sign - "$app"
+codesign --verify --deep --strict "$app"
+smoke_test_bundle "after signing"
 
 case "$(uname -m)" in
   arm64|aarch64) architecture=arm64 ;;
