@@ -64,7 +64,7 @@ Shortcuts, profiles, deadzones, mouse mode, haptics and sound can be configured 
 
 Controller typing has been tested on Windows and KDE Plasma on Wayland. The macOS app currently has CI build and launch testing only. Steam Deck, ROG Ally and other handhelds still need device testing. See the [compatibility matrix](docs/compatibility.md), or [submit a test report](https://github.com/Dewopalis/daisywheel-reamade/issues/new?template=compatibility_report.md).
 
-**Next:** broaden testing across applications and controllers, validate handhelds, and improve recovery after controller disconnects. See the [roadmap](docs/roadmap.md).
+**Next:** harden recovery from interrupted input, test installation upgrades and removal, and expand state-transition coverage. Proposed v1.0 support targets are in the [roadmap](docs/roadmap.md); current results remain in the [compatibility matrix](docs/compatibility.md).
 
 ## Open source
 
