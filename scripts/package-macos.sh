@@ -7,14 +7,33 @@ app="$build_dir/daisywheel.app"
 executable="$app/Contents/MacOS/daisywheel"
 qt_prefix="$(brew --prefix qt@6)"
 sdl2_prefix="$(brew --prefix sdl2)"
+qtbase_prefix="$(brew --prefix qtbase)"
 
 if [[ ! -d "$app" || ! -x "$executable" ]]; then
   echo "macOS app bundle not found: $app" >&2
   exit 1
 fi
 
-"$qt_prefix/bin/macdeployqt" "$app" -always-overwrite -no-codesign \
-  -libpath="$qt_prefix/lib" -libpath="$(brew --prefix qtbase)/lib" \
+qmake="$qt_prefix/bin/qmake"
+if [[ ! -x "$qmake" ]]; then
+  qmake="$qtbase_prefix/bin/qmake"
+fi
+plugin_root="$("$qmake" -query QT_INSTALL_PLUGINS)"
+platform_plugin_source="$plugin_root/platforms/libqcocoa.dylib"
+platform_plugin="$app/Contents/PlugIns/platforms/libqcocoa.dylib"
+if [[ ! -f "$platform_plugin_source" ]]; then
+  echo "Qt Cocoa platform plugin not found: $platform_plugin_source" >&2
+  exit 1
+fi
+
+# Homebrew's plugin directory contains optional plugins whose dependencies are
+# not installed with qt@6. Deploy the app's linked Qt frameworks and only the
+# Cocoa platform plugin, avoiding unrelated plugin dependency scans.
+mkdir -p "$(dirname "$platform_plugin")"
+cp "$platform_plugin_source" "$platform_plugin"
+"$qt_prefix/bin/macdeployqt" "$app" -always-overwrite -no-plugins -no-codesign \
+  -executable="$platform_plugin" \
+  -libpath="$qt_prefix/lib" -libpath="$qtbase_prefix/lib" \
   -libpath="$sdl2_prefix/lib"
 
 sdl2_load_path="$(otool -L "$executable" | awk '$1 ~ /libSDL2[^ ]*\.dylib$/ { print $1; exit }')"
