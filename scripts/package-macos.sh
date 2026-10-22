@@ -14,53 +14,6 @@ if [[ ! -d "$app" || ! -x "$executable" ]]; then
   exit 1
 fi
 
-qmake="$qt_prefix/bin/qmake"
-if [[ ! -x "$qmake" ]]; then
-  qmake="$qtbase_prefix/bin/qmake"
-fi
-plugin_root="$("$qmake" -query QT_INSTALL_PLUGINS)"
-platform_plugin_source="$plugin_root/platforms/libqcocoa.dylib"
-platform_plugin="$app/Contents/PlugIns/platforms/libqcocoa.dylib"
-if [[ ! -f "$platform_plugin_source" ]]; then
-  echo "Qt Cocoa platform plugin not found: $platform_plugin_source" >&2
-  exit 1
-fi
-
-# Homebrew's plugin directory contains optional plugins whose dependencies are
-# not installed with qt@6. Deploy the app's linked Qt frameworks and only the
-# Cocoa platform plugin, avoiding unrelated plugin dependency scans.
-mkdir -p "$(dirname "$platform_plugin")"
-cp "$platform_plugin_source" "$platform_plugin"
-"$qt_prefix/bin/macdeployqt" "$app" -always-overwrite -no-plugins -no-codesign \
-  -executable="$platform_plugin" \
-  -libpath="$qt_prefix/lib" -libpath="$qtbase_prefix/lib" \
-  -libpath="$sdl2_prefix/lib"
-
-sdl2_load_path="$(otool -L "$executable" | awk '$1 ~ /libSDL2[^ ]*\.dylib$/ { print $1; exit }')"
-if [[ -z "$sdl2_load_path" ]]; then
-  echo "Could not find the SDL2 dependency in $executable" >&2
-  exit 1
-fi
-
-sdl2_source="$sdl2_prefix/lib/libSDL2.dylib"
-if [[ ! -f "$sdl2_source" ]]; then
-  echo "SDL2 library not found: $sdl2_source" >&2
-  exit 1
-fi
-
-frameworks="$app/Contents/Frameworks"
-mkdir -p "$frameworks"
-sdl2_bundled="$frameworks/libSDL2.dylib"
-sdl2_bundle_reference='@executable_path/../Frameworks/libSDL2.dylib'
-cp -L "$sdl2_source" "$sdl2_bundled"
-install_name_tool -id "$sdl2_bundle_reference" "$sdl2_bundled"
-install_name_tool -change "$sdl2_load_path" "$sdl2_bundle_reference" "$executable"
-
-if otool -L "$executable" | grep -E '/opt/homebrew/|/usr/local/opt/'; then
-  echo "The app still depends on a Homebrew library outside its bundle" >&2
-  exit 1
-fi
-
 smoke_test_bundle() {
   local stage="$1"
   echo "Smoke-testing packaged app bundle ($stage)"
@@ -99,8 +52,58 @@ if result.stderr:
 PY
 }
 
-# This first launch separates deployment and install-name changes from signing.
-smoke_test_bundle "before signing"
+qmake="$qt_prefix/bin/qmake"
+if [[ ! -x "$qmake" ]]; then
+  qmake="$qtbase_prefix/bin/qmake"
+fi
+plugin_root="$("$qmake" -query QT_INSTALL_PLUGINS)"
+platform_plugin_source="$plugin_root/platforms/libqcocoa.dylib"
+platform_plugin="$app/Contents/PlugIns/platforms/libqcocoa.dylib"
+if [[ ! -f "$platform_plugin_source" ]]; then
+  echo "Qt Cocoa platform plugin not found: $platform_plugin_source" >&2
+  exit 1
+fi
+
+# Homebrew's plugin directory contains optional plugins whose dependencies are
+# not installed with qt@6. Deploy the app's linked Qt frameworks and only the
+# Cocoa platform plugin, avoiding unrelated plugin dependency scans.
+mkdir -p "$(dirname "$platform_plugin")"
+cp "$platform_plugin_source" "$platform_plugin"
+"$qt_prefix/bin/macdeployqt" "$app" -always-overwrite -no-plugins -no-codesign \
+  -executable="$platform_plugin" \
+  -libpath="$qt_prefix/lib" -libpath="$qtbase_prefix/lib" \
+  -libpath="$sdl2_prefix/lib"
+
+# Check Qt deployment before applying the app-specific SDL library changes.
+smoke_test_bundle "after Qt deployment"
+
+sdl2_load_path="$(otool -L "$executable" | awk '$1 ~ /libSDL2[^ ]*\.dylib$/ { print $1; exit }')"
+if [[ -z "$sdl2_load_path" ]]; then
+  echo "Could not find the SDL2 dependency in $executable" >&2
+  exit 1
+fi
+
+sdl2_source="$sdl2_prefix/lib/libSDL2.dylib"
+if [[ ! -f "$sdl2_source" ]]; then
+  echo "SDL2 library not found: $sdl2_source" >&2
+  exit 1
+fi
+
+frameworks="$app/Contents/Frameworks"
+mkdir -p "$frameworks"
+sdl2_bundled="$frameworks/libSDL2.dylib"
+sdl2_bundle_reference='@executable_path/../Frameworks/libSDL2.dylib'
+cp -L "$sdl2_source" "$sdl2_bundled"
+install_name_tool -id "$sdl2_bundle_reference" "$sdl2_bundled"
+install_name_tool -change "$sdl2_load_path" "$sdl2_bundle_reference" "$executable"
+
+if otool -L "$executable" | grep -E '/opt/homebrew/|/usr/local/opt/'; then
+  echo "The app still depends on a Homebrew library outside its bundle" >&2
+  exit 1
+fi
+
+# This launch separates SDL bundling from signing.
+smoke_test_bundle "after SDL bundling, before signing"
 
 # The bundle is unsigned for distribution and will need manual approval on
 # first launch until the project has an Apple Developer ID and notarization.
