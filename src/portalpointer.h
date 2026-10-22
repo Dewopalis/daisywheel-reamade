@@ -3,7 +3,6 @@
 #include <QObject>
 #include <QHash>
 #include <QPointer>
-#include <QSet>
 #include <QString>
 #include <QVariantList>
 #include <QVariantMap>
@@ -17,6 +16,7 @@ public:
 
     bool active() const { return isActive; }
     bool requesting() const { return isRequesting; }
+    bool recoveryRecommended() const { return shouldRecover; }
     QString status() const { return currentStatus; }
     void requestAccess();
     void move(double dx, double dy);
@@ -27,6 +27,13 @@ public:
     std::function<void(const QString &)> restoreTokenChanged;
 
 private:
+    struct ButtonDelivery {
+        bool desired=false;
+        bool confirmed=false;
+        bool inFlight=false;
+        bool mayBeDown=false;
+    };
+
     QString savedRestoreToken;
     QString sessionHandle;
     QString currentStatus;
@@ -34,11 +41,14 @@ private:
     bool isActive=false;
     bool isRequesting=false;
     bool motionInFlight=false;
+    bool scrollInFlight=false;
+    bool shouldRecover=false;
     quint64 sessionGeneration=0;
     double pendingMotionX=0.0;
     double pendingMotionY=0.0;
+    int pendingScrollSteps=0;
     QHash<QString,QPointer<QObject>> pendingRequests;
-    QSet<int> heldButtons;
+    QHash<int,ButtonDelivery> buttons;
 
     void setStatus(const QString &status);
     void createSession(quint64 generation);
@@ -48,7 +58,8 @@ private:
                      std::function<void(uint,const QVariantMap &)> response);
     void cancelPendingRequests();
     void sendPendingMotion(quint64 generation);
-    void sendButton(int button,bool pressed,quint64 generation);
+    void sendPendingScroll(quint64 generation);
+    void sendButton(int button,quint64 generation);
     void failSession(const QString &message,quint64 generation);
     void closeSession();
     void sessionClosed();
