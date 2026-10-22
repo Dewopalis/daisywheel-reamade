@@ -7,6 +7,10 @@ Choose a petal with a stick, then enter a character with a face button. It is
 being built for Windows and KDE Plasma on Linux, including handhelds and
 living-room PCs.
 
+## Why Daisywheel?
+
+Typing from the couch or a handheld often means navigating a full on-screen keyboard with a controller or reaching for a physical keyboard. Daisywheel gives the controller already in your hands a compact way to enter text.
+
 ## See it in action
 
 | Opens on text focus | Controller typing |
@@ -41,6 +45,8 @@ For macOS, physical Mac testing is still needed. See the [installation guide](do
 - Move the left stick to choose a petal and press a face button to type.
 
 ## Controls at a glance
+
+<img src="docs/media/controller-layout.svg" alt="Annotated Xbox-style controller diagram: hold LT for pointer movement and mouse clicks, or RT for text cursor movement and selection; ordinary controls type characters and operate the wheel." width="760">
 
 | Controller input | Action |
 | --- | --- |
