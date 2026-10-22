@@ -20,51 +20,52 @@
     <text x="508" y="147" fill="#94a3b8" font-size="13">Hold LB and RB together to select by words.</text>
   </g>
 
-  <!-- Rounded Xbox-style body with low, curved handles -->
-  <path d="M267 210 C282 193 316 191 345 202 L444 230 H516 L615 202 C644 191 678 193 693 210 C718 221 733 239 748 259 C773 289 803 331 818 352 C840 384 779 415 748 405 C714 394 680 350 665 350 C650 350 620 385 565 385 H397 C342 385 312 350 295 350 C271 350 246 394 212 405 C181 415 161 381 182 347 Z"
-        fill="#253247" stroke="#64748b" stroke-width="3"/>
+  <!-- Xbox-style shell with a flat top and a deep, rounded opening between the grips -->
+  <path d="M410 193 H550 C560 193 570 185 580 188 C610 195 625 220 640 260 C661 310 689 383 668 414 C653 436 632 433 620 420 C590 390 540 350 480 350 C420 350 370 390 340 420 C328 433 307 436 292 414 C271 383 299 310 320 260 C335 220 350 195 380 188 C390 185 400 193 410 193 Z"
+        transform="translate(480 0) scale(0.92 1) translate(-480 0)" fill="#253247" stroke="#64748b" stroke-width="3"/>
 
   <!-- Bumpers and triggers -->
   <g font-family="sans-serif" font-size="13" font-weight="700" text-anchor="middle">
-    <rect x="290" y="209" width="102" height="29" rx="10" fill="#334155" stroke="#64748b"/>
-    <text x="341" y="229" fill="#e2e8f0">LB</text>
-    <rect x="568" y="209" width="102" height="29" rx="10" fill="#334155" stroke="#64748b"/>
-    <text x="619" y="229" fill="#e2e8f0">RB</text>
+    <rect x="357" y="180" width="66" height="18" rx="8" fill="#334155" stroke="#64748b"/>
+    <text x="390" y="194" fill="#e2e8f0">LB</text>
+    <rect x="537" y="180" width="66" height="18" rx="8" fill="#334155" stroke="#64748b"/>
+    <text x="570" y="194" fill="#e2e8f0">RB</text>
   </g>
 
   <!-- D-pad -->
   <g fill="#0f172a" stroke="#64748b" stroke-width="1.5">
-    <rect x="266" y="277" width="30" height="92" rx="7"/>
-    <rect x="235" y="308" width="92" height="30" rx="7"/>
+    <rect x="402" y="277" width="24" height="60" rx="7"/>
+    <rect x="384" y="295" width="60" height="24" rx="7"/>
   </g>
 
   <!-- Xbox, View and Menu controls -->
   <g stroke="#64748b" stroke-width="1.5">
-    <circle cx="480" cy="273" r="15" fill="#111827"/>
-    <path d="M473 266 L487 280 M487 266 L473 280" stroke="#cbd5e1" stroke-width="2"/>
-    <rect x="447" y="301" width="22" height="9" rx="4.5" fill="#111827"/>
-    <rect x="491" y="301" width="22" height="9" rx="4.5" fill="#111827"/>
+    <circle cx="480" cy="215" r="13" fill="#111827"/>
+    <path d="M474 209 L486 221 M486 209 L474 221" stroke="#cbd5e1" stroke-width="2"/>
+    <rect x="438" y="244" width="20" height="8" rx="4" fill="#111827"/>
+    <rect x="502" y="244" width="20" height="8" rx="4" fill="#111827"/>
+    <rect x="470" y="265" width="20" height="9" rx="4.5" fill="#111827"/>
   </g>
 
   <!-- Sticks -->
   <g font-family="sans-serif" text-anchor="middle">
-    <circle cx="397" cy="315" r="43" fill="#111827" stroke="#64748b" stroke-width="2"/>
-    <circle cx="397" cy="315" r="27" fill="#334155" stroke="#64748b"/>
-    <text x="397" y="320" fill="#e2e8f0" font-size="14" font-weight="700">LS</text>
-    <text x="397" y="413" fill="#94a3b8" font-size="12">L3: Space</text>
+    <circle cx="373" cy="246" r="34" fill="#111827" stroke="#64748b" stroke-width="2"/>
+    <circle cx="373" cy="246" r="22" fill="#334155" stroke="#64748b"/>
+    <text x="373" y="251" fill="#e2e8f0" font-size="14" font-weight="700">LS</text>
+    <text x="373" y="413" fill="#94a3b8" font-size="12">L3: Space</text>
 
-    <circle cx="565" cy="337" r="39" fill="#111827" stroke="#64748b" stroke-width="2"/>
-    <circle cx="565" cy="337" r="24" fill="#334155" stroke="#64748b"/>
-    <text x="565" y="342" fill="#e2e8f0" font-size="14" font-weight="700">RS</text>
-    <text x="565" y="413" fill="#94a3b8" font-size="12">R3: Backspace (hold repeats)</text>
+    <circle cx="535" cy="300" r="35" fill="#111827" stroke="#64748b" stroke-width="2"/>
+    <circle cx="535" cy="300" r="23" fill="#334155" stroke="#64748b"/>
+    <text x="535" y="305" fill="#e2e8f0" font-size="14" font-weight="700">RS</text>
+    <text x="535" y="413" fill="#94a3b8" font-size="12">R3: Backspace (hold repeats)</text>
   </g>
 
   <!-- Face buttons use Xbox colors -->
   <g font-family="sans-serif" font-size="14" font-weight="700" text-anchor="middle">
-    <circle cx="683" cy="297" r="18" fill="#2563eb"/><text x="683" y="302" fill="white">X</text>
-    <circle cx="722" cy="258" r="18" fill="#eab308"/><text x="722" y="263" fill="#111827">Y</text>
-    <circle cx="761" cy="297" r="18" fill="#dc2626"/><text x="761" y="302" fill="white">B</text>
-    <circle cx="722" cy="336" r="18" fill="#16a34a"/><text x="722" y="341" fill="white">A</text>
+    <circle cx="548" cy="246" r="15" fill="#2563eb"/><text x="548" y="251" fill="white">X</text>
+    <circle cx="577" cy="222" r="15" fill="#eab308"/><text x="577" y="227" fill="#111827">Y</text>
+    <circle cx="606" cy="246" r="15" fill="#dc2626"/><text x="606" y="251" fill="white">B</text>
+    <circle cx="577" cy="270" r="15" fill="#16a34a"/><text x="577" y="275" fill="white">A</text>
   </g>
 
   <rect x="24" y="438" width="912" height="42" rx="11" fill="#1e293b" stroke="#475569"/>
