@@ -51,6 +51,7 @@ you need under **Artifacts** at the bottom of the run summary:
 - `windows-x64`: setup `.exe` and portable `.zip`
 - `linux-debian-appimage`: `.deb` and `.AppImage`
 - `linux-fedora-rpm`: `.rpm`
+- `macos-<architecture>`: app bundle `.dmg` and `.zip`
 
 Extract the downloaded artifact ZIP to get the installer or package file inside.
 Artifacts are tied to that workflow run and expire after 14 days. They are useful
@@ -58,11 +59,12 @@ for trying recent changes; they have not necessarily been manually validated on
 handheld hardware.
 
 For reviewed, persistent downloads, visit [GitHub Releases](https://github.com/Dewopalis/daisywheel-reamade/releases).
-The [v0.5.0 release](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.5.0)
+The [v0.5.1 release](https://github.com/Dewopalis/daisywheel-reamade/releases/tag/v0.5.1)
 includes the Windows installer and portable ZIP, Debian DEB, Fedora RPM, Linux
 AppImage and SHA-256 checksums. Version tags build packages and prepare a draft
-release for review before publication. See the [v0.5.0 release notes](docs/releases/v0.5.0.md)
-for changes and validation details.
+release for review before publication. See the [v0.5.1 release notes](docs/releases/v0.5.1.md)
+for changes and validation details. The macOS app bundle is an experimental
+build that still needs testing on a physical Mac.
 
 See [installation and release packaging](docs/releases/packaging.md) for supported
 platform baselines and release details.
@@ -76,6 +78,9 @@ platform baselines and release details.
   choose **Install for this user**. It copies itself to a stable location and
   registers Daisywheel with KDE. If it will not open, right-click it, choose
   **Properties → Permissions**, and enable **Is executable**.
+- **macOS:** open the `.dmg` and drag Daisywheel REAmade to Applications. The
+  experimental app is not notarized, so macOS may ask you to approve it on
+  first launch. Physical Mac testing is still needed.
 
 After installing on KDE, open **System Settings → Keyboard → Virtual Keyboard**,
 select **Daisywheel REAmade**, and click **Apply**. KDE requires this last choice;
@@ -93,6 +98,7 @@ are for developers.
 | Steam Deck Desktop Mode | Intended target; not yet tested on the device |
 | Steam Deck Gaming Mode | Separate integration planned for investigation |
 | Windows 11 | Controller typing confirmed; UI Automation field detection tested with native and Qt controls |
+| macOS | Experimental app bundle; CI build available, physical Mac testing pending |
 | GNOME, other Wayland desktops, X11 | System-keyboard integration not supported yet |
 
 ## Developer setup: build from source on CachyOS / Arch Linux with KDE
