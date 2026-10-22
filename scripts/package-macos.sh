@@ -75,10 +75,29 @@ import sys
 environment = os.environ.copy()
 environment.pop("DYLD_LIBRARY_PATH", None)
 environment["SDL_AUDIODRIVER"] = "dummy"
+environment["QT_DEBUG_PLUGINS"] = "1"
 try:
-    subprocess.run([sys.argv[1], "--smoke-test"], env=environment, check=True, timeout=30)
+    result = subprocess.run(
+        [sys.argv[1], "--smoke-test"],
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
 except subprocess.TimeoutExpired as error:
-    raise SystemExit(f"Packaged macOS app smoke test timed out after {error.timeout} seconds")
+    print(f"Packaged macOS app smoke test timed out after {error.timeout} seconds", file=sys.stderr)
+    for stream_name, stream in (("stdout", error.stdout), ("stderr", error.stderr)):
+        if stream:
+            if isinstance(stream, bytes):
+                stream = stream.decode(errors="replace")
+            print(f"--- captured {stream_name} (last 12000 characters) ---", file=sys.stderr)
+            print(stream[-12000:], file=sys.stderr)
+    raise SystemExit(1)
+if result.stdout:
+    print(result.stdout, end="")
+if result.stderr:
+    print(result.stderr, end="", file=sys.stderr)
 PY
 
 case "$(uname -m)" in
