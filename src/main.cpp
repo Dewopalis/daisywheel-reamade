@@ -59,6 +59,14 @@ int main(int argc,char **argv){
     QApplication app(argc,argv);
     QCoreApplication::setOrganizationName("Daisywheel");
     QCoreApplication::setApplicationName("Daisywheel");
+    if(app.arguments().contains("--smoke-test")){
+        QWidget smokeWindow;
+        smokeWindow.setWindowTitle("Daisywheel startup smoke test");
+        smokeWindow.resize(160,80);
+        smokeWindow.show();
+        QTimer::singleShot(1000,&app,&QApplication::quit);
+        return app.exec();
+    }
 #ifdef DAISYWHEEL_KDE
     if(app.arguments().contains("--install-appimage") && !runAppImageInstaller())return 0;
 #endif
@@ -1013,7 +1021,6 @@ int main(int argc,char **argv){
     if(!windowsMode)window.adjustSize();
     soundAvailable=soundEffects.open();
     if(!systemMode)window.show();
-    if(app.arguments().contains("--smoke-test"))QTimer::singleShot(1000,&app,&QApplication::quit);
     int result=app.exec();
     soundEffects.close();
     if(controller)SDL_GameControllerClose(controller);
