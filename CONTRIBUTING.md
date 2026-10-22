@@ -16,8 +16,10 @@ small, reviewable changes are all useful.
 
 ## Build and check
 
-See the platform setup in the [README](README.md). On Linux with the required
-Qt 6, LayerShellQt, Wayland and SDL2 development packages installed:
+See [docs/development.md](docs/development.md) for Linux setup and build steps,
+and the [Windows build and testing guide](docs/windows-build-and-testing.md)
+for Windows-specific instructions. On Linux with the required Qt 6,
+LayerShellQt, Wayland and SDL2 development packages installed:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -30,10 +32,9 @@ input needs a KDE Plasma Wayland session and a focused text field. Avoid running
 two system-mode instances at the same time because both can read controller
 input.
 
-Windows contributors can follow the build and interactive test instructions in
-the README's [Windows instructions](README.md#run-on-windows). The native
-Windows input and focus tests need an unlocked interactive Windows desktop, so
-report clearly which checks you could run.
+Windows contributors can build the app and run interactive input and focus
+tests on an unlocked Windows desktop. Please report clearly which checks you
+could run.
 
 ## Pull requests
 

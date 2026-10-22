@@ -1,8 +1,8 @@
 # Windows build and testing
 
-For normal use, install Daisywheel from the Windows setup package described in
-the [README](../README.md#install-a-release). This guide is for developers who
-want to build the project or run its Windows input and focus tests.
+For normal use, see [Windows installation](installation.md#windows). This guide
+is for developers who want to build the project or run its Windows input and
+focus tests.
 
 ## Requirements
 
@@ -60,22 +60,5 @@ EDIT control. Current wheel actions send one ASCII character per button press;
 this remains a compatibility concern for future multi-character Unicode
 layouts or prediction.
 
-## Troubleshooting
-
-If Daisywheel does not start when you sign in, check **Settings → Apps →
-Startup** or **Task Manager → Startup apps** and enable Daisywheel. Confirm that
-the registered shortcut still points to the executable and that its companion
-DLLs remain beside it. See [Microsoft's startup-app instructions](https://support.microsoft.com/en-gb/windows/experience/startup-boot/configure-startup-applications-in-windows).
-
-Windows may block input to applications running at a higher privilege level.
-Secure desktops and login screens are unsupported. To check controller input
-independently from system integration, run the executable without
-`--windows-input` and type into its local test field.
-
-Automatic field detection depends on the target app exposing suitable UI
-Automation information. If a field is not detected, open Daisywheel manually
-with the configured controller shortcut and report the application and field
-type in a [compatibility report](../.github/ISSUE_TEMPLATE/compatibility_report.md).
-
-For details about the Windows integration and its original validation, see the
-[Windows development notes](windows-development.md).
+For startup and input problems, see [troubleshooting](troubleshooting.md#windows).
+For implementation details, see [Windows implementation notes](windows-implementation-notes.md).
