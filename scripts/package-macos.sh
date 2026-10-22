@@ -21,34 +21,54 @@ smoke_test_bundle() {
 import os
 import subprocess
 import sys
+import tempfile
 
 environment = os.environ.copy()
 environment.pop("DYLD_LIBRARY_PATH", None)
 environment["SDL_AUDIODRIVER"] = "dummy"
 environment["QT_DEBUG_PLUGINS"] = "1"
 stage = sys.argv[2]
+process = subprocess.Popen(
+    [sys.argv[1], "--smoke-test"],
+    env=environment,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+)
 try:
-    result = subprocess.run(
-        [sys.argv[1], "--smoke-test"],
-        env=environment,
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=20,
-    )
-except subprocess.TimeoutExpired as error:
-    print(f"Packaged macOS app smoke test timed out after {error.timeout} seconds ({stage})", file=sys.stderr)
-    for stream_name, stream in (("stdout", error.stdout), ("stderr", error.stderr)):
+    stdout, stderr = process.communicate(timeout=20)
+except subprocess.TimeoutExpired:
+    print(f"Packaged macOS app smoke test timed out ({stage}); sampling process {process.pid}", file=sys.stderr)
+    try:
+        with tempfile.NamedTemporaryFile() as sample_file:
+            sample = subprocess.run(
+                ["/usr/bin/sample", str(process.pid), "3", "-file", sample_file.name],
+                capture_output=True,
+                text=True,
+                timeout=8,
+            )
+            sample_file.seek(0)
+            sample_output = sample_file.read().decode(errors="replace")
+        if sample_output:
+            print("--- process sample (last 12000 characters) ---", file=sys.stderr)
+            print(sample_output[-12000:], file=sys.stderr)
+        if sample.stderr:
+            print(sample.stderr, end="", file=sys.stderr)
+    except (OSError, subprocess.TimeoutExpired) as sample_error:
+        print(f"Could not capture process sample: {sample_error}", file=sys.stderr)
+    process.kill()
+    stdout, stderr = process.communicate()
+    for stream_name, stream in (("stdout", stdout), ("stderr", stderr)):
         if stream:
-            if isinstance(stream, bytes):
-                stream = stream.decode(errors="replace")
             print(f"--- captured {stream_name} (last 12000 characters) ---", file=sys.stderr)
             print(stream[-12000:], file=sys.stderr)
     raise SystemExit(1)
-if result.stdout:
-    print(result.stdout, end="")
-if result.stderr:
-    print(result.stderr, end="", file=sys.stderr)
+if stdout:
+    print(stdout, end="")
+if stderr:
+    print(stderr, end="", file=sys.stderr)
+if process.returncode:
+    raise SystemExit(f"Packaged app smoke test exited with status {process.returncode} ({stage})")
 PY
 }
 
