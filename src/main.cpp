@@ -56,16 +56,25 @@
 #endif
 
 int main(int argc,char **argv){
+    const bool smokeTest=std::find_if(argv,argv+argc,[](const char *argument){return QString::fromLocal8Bit(argument)=="--smoke-test";})!=argv+argc;
+    if(smokeTest)std::cerr<<"Smoke test: initializing Qt application\n"<<std::flush;
     QApplication app(argc,argv);
+    if(smokeTest)std::cerr<<"Smoke test: Qt application initialized\n"<<std::flush;
     QCoreApplication::setOrganizationName("Daisywheel");
     QCoreApplication::setApplicationName("Daisywheel");
-    if(app.arguments().contains("--smoke-test")){
+    if(smokeTest){
         QWidget smokeWindow;
         smokeWindow.setWindowTitle("Daisywheel startup smoke test");
         smokeWindow.resize(160,80);
         smokeWindow.show();
-        QTimer::singleShot(1000,&app,&QApplication::quit);
-        return app.exec();
+        QTimer::singleShot(1000,&app,[&app]{
+            std::cerr<<"Smoke test: timer fired\n"<<std::flush;
+            app.quit();
+        });
+        std::cerr<<"Smoke test: entering event loop\n"<<std::flush;
+        const int result=app.exec();
+        std::cerr<<"Smoke test: event loop exited\n"<<std::flush;
+        return result;
     }
 #ifdef DAISYWHEEL_KDE
     if(app.arguments().contains("--install-appimage") && !runAppImageInstaller())return 0;
