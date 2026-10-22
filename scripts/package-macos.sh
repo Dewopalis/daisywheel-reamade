@@ -7,6 +7,7 @@ app="$build_dir/daisywheel.app"
 executable="$app/Contents/MacOS/daisywheel"
 qt_prefix="$(brew --prefix qt@6)"
 sdl2_prefix="$(brew --prefix sdl2)"
+sdl3_prefix="$(brew --prefix sdl3)"
 qtbase_prefix="$(brew --prefix qtbase)"
 
 if [[ ! -d "$app" || ! -x "$executable" ]]; then
@@ -94,9 +95,6 @@ cp "$platform_plugin_source" "$platform_plugin"
   -libpath="$qt_prefix/lib" -libpath="$qtbase_prefix/lib" \
   -libpath="$sdl2_prefix/lib"
 
-# Check Qt deployment before applying the app-specific SDL library changes.
-smoke_test_bundle "after Qt deployment"
-
 sdl2_load_path="$(otool -L "$executable" | awk '$1 ~ /libSDL2[^ ]*\.dylib$/ { print $1; exit }')"
 if [[ -z "$sdl2_load_path" ]]; then
   echo "Could not find the SDL2 dependency in $executable" >&2
@@ -109,6 +107,12 @@ if [[ ! -f "$sdl2_source" ]]; then
   exit 1
 fi
 
+sdl3_source="$sdl3_prefix/lib/libSDL3.dylib"
+if [[ ! -f "$sdl3_source" ]]; then
+  echo "SDL3 library required by Homebrew's SDL2 compatibility layer not found: $sdl3_source" >&2
+  exit 1
+fi
+
 frameworks="$app/Contents/Frameworks"
 mkdir -p "$frameworks"
 sdl2_bundled="$frameworks/libSDL2.dylib"
@@ -116,6 +120,16 @@ sdl2_bundle_reference='@executable_path/../Frameworks/libSDL2.dylib'
 cp -L "$sdl2_source" "$sdl2_bundled"
 install_name_tool -id "$sdl2_bundle_reference" "$sdl2_bundled"
 install_name_tool -change "$sdl2_load_path" "$sdl2_bundle_reference" "$executable"
+
+# Homebrew's SDL2 package is sdl2-compat, which dynamically loads SDL3 on macOS
+# as @loader_path/libSDL3.dylib. macdeployqt cannot see this dlopen dependency.
+sdl3_bundled="$frameworks/libSDL3.dylib"
+cp -L "$sdl3_source" "$sdl3_bundled"
+install_name_tool -id '@loader_path/libSDL3.dylib' "$sdl3_bundled"
+if otool -L "$sdl3_bundled" | grep -E '/opt/homebrew/|/usr/local/opt/'; then
+  echo "Bundled SDL3 still depends on a Homebrew library outside the app" >&2
+  exit 1
+fi
 
 if otool -L "$executable" | grep -E '/opt/homebrew/|/usr/local/opt/'; then
   echo "The app still depends on a Homebrew library outside its bundle" >&2
