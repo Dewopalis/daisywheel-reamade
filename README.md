@@ -23,6 +23,22 @@ window controls, mouse mode and controller-accessible settings.
 | --- |
 | <img src="docs/media/opening-settings.gif" alt="Opening and navigating Daisywheel settings with a controller" width="420"> |
 
+## Download Daisywheel
+
+Get the [latest release](https://github.com/Dewopalis/daisywheel-reamade/releases/latest)
+and choose the package for your system:
+
+| System | Download |
+| --- | --- |
+| Windows | Setup `.exe` installer, or portable `.zip` |
+| Debian / Ubuntu | `.deb` package |
+| Fedora | `.rpm` package |
+| Arch / CachyOS and other Linux distributions | `.AppImage` |
+| macOS | Experimental `.dmg` / `.zip` from [GitHub Actions](https://github.com/Dewopalis/daisywheel-reamade/actions/workflows/packages.yml); not included in a stable release |
+
+The macOS build is still experimental and needs testing on a physical Mac. The
+installation instructions and development builds are further down this page.
+
 **Current status:** controller typing works in other applications on the
 development PCs running Windows and KDE Plasma / Wayland. v0.5.0 adds
 controller-only settings navigation, cursor editing, configurable stick
@@ -42,7 +58,7 @@ text controls. Contributions are welcome; see
 [CONTRIBUTING.md](CONTRIBUTING.md) for how to build, report issues and propose
 changes. You can also use the GitHub issue and pull request templates.
 
-## Download builds
+## Development builds
 
 The [Build packages workflow](https://github.com/Dewopalis/daisywheel-reamade/actions/workflows/packages.yml)
 prepares a Windows setup EXE and portable ZIP, a Debian DEB, a Fedora RPM, and a
@@ -93,17 +109,24 @@ the installer leaves your current keyboard selection unchanged. See the full
 other package managers and removal steps. The source-build instructions below
 are for developers.
 
-## Platform support
+## Compatibility reports
 
-| Platform | Status |
-| --- | --- |
-| KDE Plasma 6 on Linux / Wayland | Working prototype; primary development target |
-| CachyOS / Arch-based KDE distributions | Installation instructions below; more device testing needed |
-| Steam Deck Desktop Mode | Intended target; not yet tested on the device |
-| Steam Deck Gaming Mode | Separate integration planned for investigation |
-| Windows 11 | Controller typing confirmed; UI Automation field detection tested with native and Qt controls |
-| macOS | Experimental app bundle; CI build available, physical Mac testing pending |
-| GNOME, other Wayland desktops, X11 | System-keyboard integration not supported yet |
+Compatibility depends on the operating system, desktop session, controller and
+application. These are the setups tested so far. Please
+[report your results](https://github.com/Dewopalis/daisywheel-reamade/issues/new?template=compatibility_report.md)
+so we can expand this table with real hardware coverage.
+
+| Operating system / desktop | Controller | Application or scenario | Result |
+| --- | --- | --- | --- |
+| Windows 11 | Xbox Series X controller | Native and Qt text controls; controller typing in another app | Tested on the development PC |
+| CachyOS / Arch Linux, KDE Plasma 6 on Wayland | Xbox Series X controller | KDE text-focus popup; typing into KWrite; controller settings and mouse mode | Tested on the development PC |
+| macOS 15 (GitHub Actions runner) | Not tested | Build, package and app-launch smoke test | CI-tested only; physical Mac and controller testing needed |
+| Steam Deck, ROG Ally and other handhelds | — | — | Not yet tested on device |
+
+Steam Deck Gaming Mode, GNOME, other Wayland desktops and X11 system-keyboard
+integration are not supported or verified yet. See the
+[installation and release packaging guide](docs/releases/packaging.md) for
+platform requirements.
 
 ## Developer setup: build from source on CachyOS / Arch Linux with KDE
 
