@@ -13,6 +13,8 @@ Typing from the couch or a handheld often means navigating a full on-screen keyb
 
 ## See it in action
 
+<img src="docs/media/brag-poster.jpg" alt="Daisywheel REAmade, a controller-first keyboard for handheld computers and desktop PCs" width="760">
+
 | Opens on text focus | Controller typing |
 | --- | --- |
 | <img src="docs/media/auto-popup.gif" alt="Daisywheel opening on text focus in Firefox" width="420"> | <img src="docs/media/typing.gif" alt="Typing into KWrite with Daisywheel" width="420"> |
