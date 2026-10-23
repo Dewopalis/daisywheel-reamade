@@ -1,5 +1,7 @@
 # Daisywheel REAmade
 
+<img src="docs/media/brag-poster.jpg" alt="Daisywheel REAmade, a controller-first keyboard for handheld computers and desktop PCs" width="760">
+
 **Controller-first typing for handheld computers and desktop PCs.**
 
 Daisywheel is an on-screen keyboard inspired by Steam's original daisywheel.
@@ -12,8 +14,6 @@ living-room PCs.
 Typing from the couch or a handheld often means navigating a full on-screen keyboard with a controller or reaching for a physical keyboard. Daisywheel gives the controller already in your hands a compact way to enter text.
 
 ## See it in action
-
-<img src="docs/media/brag-poster.jpg" alt="Daisywheel REAmade, a controller-first keyboard for handheld computers and desktop PCs" width="760">
 
 | Opens on text focus | Controller typing |
 | --- | --- |
