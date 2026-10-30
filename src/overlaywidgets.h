@@ -1,5 +1,6 @@
 #pragma once
 #include "wheel.h"
+#include "characterlayout.h"
 #include <QApplication>
 #include <QWidget>
 #include <QLabel>
@@ -7,6 +8,7 @@
 #include <QMouseEvent>
 #include <QWindow>
 #include <QScreen>
+#include <QString>
 #include <functional>
 #include <algorithm>
 #include <SDL.h>
@@ -144,12 +146,21 @@ public:
 
 class WheelView : public QWidget {
 public:
+    characterlayout::Pages pageLower;
+    characterlayout::Pages pageUpper;
     int selected=-1;
-    bool upper=false, symbol=false;
+    bool upper=false;
+    int page=0; // 0: letters, 1: symbols, 2: language characters
     bool l1Down=false,l2Down=false,r1Down=false,r2Down=false,l3Down=false,r3Down=false;
     WheelView() {
         setMinimumSize(420,360);
         setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+        loadBuiltInPages();
+    }
+    void loadBuiltInPages() {
+        const characterlayout::Layout layout=characterlayout::builtIn();
+        pageLower=layout.lower;
+        pageUpper=layout.upper;
     }
     void flashFaceButton(int slot) {
         flashedFaceSlot=slot;
@@ -186,7 +197,6 @@ public:
         double radius=std::min(width(),height())*.35;
         double petalRadius=radius*.34;
         double scale=petalRadius/53.0;
-        const auto &layout=symbol?wheel::symbols:wheel::letters;
         QFont font=p.font();font.setPixelSize(qRound(19*scale));p.setFont(font);
         const QColor colors[]={QColor("#5ee69a"),QColor("#ff7777"),QColor("#80baff"),QColor("#ffe07a")};
         const QPointF offsets[]={{0,23*scale},{29*scale,0},{-29*scale,0},{0,-23*scale}};
@@ -196,7 +206,9 @@ public:
             p.setPen(QPen(i==selected?QColor("#66d9ef"):QColor("#394459"),i==selected?3:1));
             p.setBrush(QColor(i==selected?"#253c55":"#1c2636"));p.drawEllipse(c,petalRadius,petalRadius);
             for(int j=0;j<4;++j){
-                QString text=QString(QChar(layout[i][j]));if(upper&&!symbol)text=text.toUpper();
+                const QString text=pageUpper[page][i][j].isEmpty()||page==1
+                    ?pageLower[page][i][j]
+                    :(upper?pageUpper[page][i][j]:pageLower[page][i][j]);
                 if(i==selected&&faceFlashActive&&j==flashedFaceSlot&&SDL_GetTicks()-faceFlashStarted<180){
                     QColor feedback=colors[j];feedback.setAlpha(55);
                     p.setPen(QPen(colors[j],2.5));p.setBrush(feedback);
@@ -207,7 +219,7 @@ public:
         }
         p.setPen(QColor("#dce6f5"));
         p.drawText(QRectF(center-QPointF(67,40),QSizeF(134,80)),Qt::AlignCenter,
-                   symbol?"Symbols":upper?"ABC":"abc");
+                   page==1?"Symbols":page==2?"Extended":upper?"ABC":"abc");
         if(!shortcutHint.isEmpty()){
             QFont hintFont=p.font();hintFont.setPixelSize(qMax(8,qRound(10*scale)));p.setFont(hintFont);
             p.setPen(QColor("#9aa8bd"));

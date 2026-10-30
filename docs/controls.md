@@ -10,7 +10,7 @@ SDL supplies controller mappings; colors currently follow Xbox conventions.
 | Left stick | Select a petal; neutral does not enter a character |
 | A / B / X / Y | Enter the bottom / right / left / top character in the selected petal |
 | Left bumper | Toggle uppercase |
-| Right bumper | Toggle letters and symbols |
+| Right bumper | Switch character pages: letters and symbols; with Extended special characters, also accents and punctuation |
 | Left stick click | Space |
 | Right stick click / hold | Backspace once / repeat while held |
 | Start / Menu | Enter |
@@ -41,6 +41,8 @@ Help tutorial and configuration.
 | --- | --- |
 | Controller shortcut | Choose Home/Guide, Back/View or Start/Menu; selected button no longer performs its normal wheel action |
 | Controller profile | Living room / desktop enables mouse mode; Handheld disables it; Custom allows individual settings |
+| Character layout | Standard or Extended special characters; imported layouts also include an extended page |
+| Layout file | Import or export a plain-text layout to edit and share it |
 | Stick deadzone | Shared by wheel selection, pointer movement and cursor editing; adjustable from 5–45% |
 | Pointer speed | Adjusts controller pointer movement |
 | Haptic feedback | Optional button feedback with adjustable strength; stick movement does not trigger rumble |

@@ -5,6 +5,7 @@
 #include "settingsnavigation.h"
 #include "pointerbuttonstate.h"
 #include "soundeffects.h"
+#include "characterlayout.h"
 #include <QApplication>
 #include <QWidget>
 #include <QPainter>
@@ -18,6 +19,7 @@
 #include <QGroupBox>
 #include <QMessageBox>
 #include <QTimer>
+#include <QUuid>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QWindow>
@@ -36,7 +38,10 @@
 #include <QCursor>
 #include <QList>
 #include <QDir>
+#include <QFile>
+#include <QFileDialog>
 #include <QLockFile>
+#include <QSaveFile>
 #include <QStandardPaths>
 #include <functional>
 #include <algorithm>
@@ -89,6 +94,27 @@ int main(int argc,char **argv){
     }
     QSettings settings;
     settings.remove("minimalMode");
+    auto customLayoutSettingKey=[](const QString &id,int page,int petal,int slot,const QString &caseName){
+        return QString("customLayouts/%1/pages/%2/%3/%4/%5").arg(id).arg(page).arg(petal).arg(slot).arg(caseName);
+    };
+    QStringList customLayoutIds=settings.value("customLayouts/ids").toStringList();
+    if(customLayoutIds.isEmpty()&&settings.value("hasImportedCharacterLayout",false).toBool()){
+        const QString legacyId="legacy-1";
+        settings.setValue("customLayouts/"+legacyId+"/name",settings.value("importedCharacterLayoutName","Custom"));
+        for(int page=0;page<3;++page)for(int petal=0;petal<8;++petal)for(int slot=0;slot<4;++slot){
+            for(const QString &caseName:{QString("lower"),QString("upper")}){
+                const QString oldKey=QString("importedCharacterPages/%1/%2/%3/%4").arg(page).arg(petal).arg(slot).arg(caseName);
+                settings.setValue(customLayoutSettingKey(legacyId,page,petal,slot,caseName),settings.value(oldKey));
+            }
+        }
+        customLayoutIds.append(legacyId);
+        settings.setValue("customLayouts/ids",customLayoutIds);
+        if(settings.value("characterLayout").toString()=="imported")settings.setValue("characterLayout","custom:"+legacyId);
+        settings.remove("hasImportedCharacterLayout");
+        settings.remove("importedCharacterLayoutName");
+        settings.remove("importedCharacterPages");
+    }
+    if(customLayoutIds.size()>8){customLayoutIds=customLayoutIds.mid(0,8);settings.setValue("customLayouts/ids",customLayoutIds);}
     if(app.arguments().contains("--input-target-test")) {
         QPlainTextEdit target;target.setWindowTitle("Daisywheel cross-app verification");
         target.setPlainText("DAISYWHEEL_ISOLATED_PROBE");target.selectAll();
@@ -187,6 +213,44 @@ int main(int argc,char **argv){
     controllerSettingsGroup->setMinimumWidth(0);
     auto *controllerSettingsLayout=new QFormLayout(controllerSettingsGroup);
     controllerSettingsLayout->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    auto *characterLayout=new QComboBox;
+    characterLayout->setAccessibleName("Character layout");
+    characterLayout->addItem("Standard", "standard");
+    characterLayout->addItem("Extended special characters", "extended");
+    for(const QString &id:customLayoutIds)
+        characterLayout->addItem("Custom: "+settings.value("customLayouts/"+id+"/name","Custom").toString(),"custom:"+id);
+    const QString savedCharacterLayout=settings.value("characterLayout", "standard").toString();
+    int characterLayoutIndex=characterLayout->findData(savedCharacterLayout);
+    characterLayout->setCurrentIndex(characterLayoutIndex<0?0:characterLayoutIndex);
+    controllerSettingsLayout->addRow("Character layout",characterLayout);
+    auto *importLayoutButton=new QPushButton("Import layout file…");
+    importLayoutButton->setAccessibleName("Import character layout from text file");
+    auto *exportLayoutButton=new QPushButton("Export layout file…");
+    exportLayoutButton->setAccessibleName("Export character layout to text file");
+    auto *layoutFileButtons=new QWidget;
+    auto *layoutFileButtonsLayout=new QHBoxLayout(layoutFileButtons);
+    layoutFileButtonsLayout->setContentsMargins(0,0,0,0);
+    layoutFileButtonsLayout->addWidget(importLayoutButton);
+    layoutFileButtonsLayout->addWidget(exportLayoutButton);
+    controllerSettingsLayout->addRow("Layout file",layoutFileButtons);
+    auto *removeCustomLayoutButton=new QPushButton("Remove selected custom layout");
+    removeCustomLayoutButton->setAccessibleName("Remove selected custom character layout");
+    removeCustomLayoutButton->setVisible(!customLayoutIds.isEmpty());
+    removeCustomLayoutButton->setEnabled(characterLayout->currentData().toString().startsWith("custom:"));
+    controllerSettingsLayout->addRow(removeCustomLayoutButton);
+    auto *layoutFileStatus=new QLabel;
+    layoutFileStatus->setWordWrap(true);
+    int layoutStatusRevision=0;
+    auto setLayoutFileStatus=[&](const QString &message){
+        const int revision=++layoutStatusRevision;
+        layoutFileStatus->setText(message);
+        layoutFileStatus->setVisible(!message.isEmpty());
+        if(message.isEmpty())return;
+        QTimer::singleShot(5000,layoutFileStatus,[&,revision]{
+            if(revision==layoutStatusRevision){layoutFileStatus->clear();layoutFileStatus->hide();}
+        });
+    };
+    controllerSettingsLayout->addRow(layoutFileStatus);
     auto *soundSettingsGroup=new QGroupBox("Sound effects");
     soundSettingsGroup->setMinimumWidth(0);
     auto *soundSettingsLayout=new QFormLayout(soundSettingsGroup);
@@ -244,6 +308,9 @@ int main(int argc,char **argv){
     settingsTabs->addTab(windowSettingsGroup,"Window");
     settingsTabs->addTab(controllerSettingsGroup,"Controller");
     settingsTabs->addTab(soundSettingsGroup,"Sound");
+    QObject::connect(settingsTabs,&QTabWidget::currentChanged,[&](int index){
+        if(settingsTabs->widget(index)!=controllerSettingsGroup)setLayoutFileStatus({});
+    });
 #ifdef Q_OS_WIN
     if(windowsMode)settingsTabs->addTab(keyboardSettingsGroup,"Keyboard");
 #endif
@@ -268,7 +335,7 @@ int main(int argc,char **argv){
             "<h3>Choose and type</h3>"
             "<p>Move the left stick to select one of the eight petals. Press a face button "
             "to choose its matching character: A is bottom, B right, X left, and Y top. "
-            "LB switches uppercase; RB switches between letters and symbols.</p>"
+            "LB switches uppercase. RB cycles character pages; the extended or imported layout adds an extra page of characters.</p>"
             "<h3>Other controls</h3>"
             "<p><b>L3</b> inserts a space. <b>R3</b> deletes; hold it to repeat. "
             "<b>Start</b> inserts Enter. Set the show/hide shortcut in Controller settings by pressing any mapped controller button.</p>"
@@ -284,9 +351,18 @@ int main(int argc,char **argv){
             "<h3>Sound</h3>"
             "<p>Petal changes use a soft pitch cue, with a brighter cue for selections and actions. "
             "Adjust the volume or disable sound effects in Sound settings.</p>"
+            "<h3>Character layouts</h3>"
+            "<p>In Controller settings, export a layout file to get an editable UTF-8 text template. "
+            "Change the characters, then import the file and select its name under Character layout. "
+            "Keep the version header, Name line, all five sections, and all eight petal rows in each section. "
+            "Each row needs four single characters separated by spaces, in A, B, X, Y order. "
+            "Use one Unicode character per slot, such as a precomposed <b>ê</b>. Lines beginning with # are comments. "
+            "Import checks the complete file before saving it; see the project documentation for the full format.</p>"
+            "<p>You can keep up to eight custom layouts. Importing a layout with the same name replaces that saved layout. "
+            "Select a custom layout and choose Remove selected custom layout to delete it from Daisywheel settings.</p>"
             "<h3>Window</h3>"
             "<p>Drag the title area to move Daisywheel. Use the corner grip to resize. "
-            "Settings contains position, transparency, and controller options.</p>");
+            "Settings contains position, transparency, controller options, and import/export controls for character layout files.</p>");
         help.exec();
         activeHelpDialog=nullptr;
     });
@@ -384,7 +460,9 @@ int main(int argc,char **argv){
     hapticsStrength->setMinimumWidth(0);hapticsStrength->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
     hapticsStrength->setValue(settings.value("hapticsStrength",50).toInt());controllerSettingsLayout->addRow(hapticsStrengthLabel,hapticsStrength);
     hapticsStrengthLabel->setText(QString("Haptic strength: %1%").arg(hapticsStrength->value()));
-    controllerProfile->setVisible(systemMode);mouseModeEnabled->setVisible(systemMode);
+    controllerProfile->setVisible(systemMode);
+    if(QWidget *profileLabel=controllerSettingsLayout->labelForField(controllerProfile))profileLabel->setVisible(systemMode);
+    mouseModeEnabled->setVisible(systemMode);
     pointerSpeedLabel->setVisible(systemMode);pointerSpeed->setVisible(systemMode);
     deadzoneLabel->setVisible(systemMode);deadzone->setVisible(systemMode);
     hapticsEnabled->setVisible(systemMode);hapticsStrengthLabel->setVisible(systemMode);
@@ -471,6 +549,7 @@ int main(int argc,char **argv){
     invertScrolling->setVisible(systemMode);
     invertScrolling->setEnabled(mouseModeEnabled->isChecked());
     controllerSettingsLayout->addRow("Living room scrolling",invertScrolling);
+    if(QWidget *scrollingLabel=controllerSettingsLayout->labelForField(invertScrolling))scrollingLabel->setVisible(systemMode);
     QObject::connect(invertScrolling,&QCheckBox::toggled,[&](bool enabled){settings.setValue("invertScrolling",enabled);});
     QObject::connect(mouseModeEnabled,&QCheckBox::toggled,invertScrolling,&QWidget::setEnabled);
     auto *status=new QLabel;
@@ -488,6 +567,103 @@ int main(int argc,char **argv){
     auto *editor=new QPlainTextEdit;editor->setPlaceholderText("Tap here, then type with your controller");editor->setMaximumHeight(110);addControl(editor);
     editor->setVisible(!systemMode);
     auto *view=new WheelView;box->addWidget(view);
+    auto loadCustomLayout=[&](const QString &id){
+        if(!customLayoutIds.contains(id))return false;
+        for(int page=0;page<3;++page)for(int petal=0;petal<8;++petal)for(int slot=0;slot<4;++slot){
+            view->pageLower[page][petal][slot]=settings.value(customLayoutSettingKey(id,page,petal,slot,"lower")).toString();
+            view->pageUpper[page][petal][slot]=settings.value(customLayoutSettingKey(id,page,petal,slot,"upper")).toString();
+        }
+        return true;
+    };
+    auto persistCustomLayout=[&](const QString &id,const characterlayout::Layout &layout){
+        settings.setValue("customLayouts/"+id+"/name",layout.name);
+        for(int page=0;page<3;++page)for(int petal=0;petal<8;++petal)for(int slot=0;slot<4;++slot){
+            settings.setValue(customLayoutSettingKey(id,page,petal,slot,"lower"),layout.lower[page][petal][slot]);
+            settings.setValue(customLayoutSettingKey(id,page,petal,slot,"upper"),layout.upper[page][petal][slot]);
+        }
+        settings.setValue("customLayouts/ids",customLayoutIds);
+        settings.sync();
+    };
+    if(characterLayout->currentData().toString().startsWith("custom:")){
+        const QString id=characterLayout->currentData().toString().mid(7);
+        if(!loadCustomLayout(id))characterLayout->setCurrentIndex(characterLayout->findData("standard"));
+    }
+    QObject::connect(characterLayout,qOverload<int>(&QComboBox::currentIndexChanged),[&](int index){
+        const QString value=characterLayout->itemData(index).toString();
+        settings.setValue("characterLayout",value);
+        removeCustomLayoutButton->setEnabled(value.startsWith("custom:"));
+        if(value.startsWith("custom:")){
+            const QString id=value.mid(7);
+            if(!loadCustomLayout(id)){
+                setLayoutFileStatus("The selected custom layout could not be loaded.");
+                view->loadBuiltInPages();
+            }
+        }else view->loadBuiltInPages();
+        if(value=="standard"&&view->page==2)view->page=0;
+        view->update();
+    });
+    QObject::connect(importLayoutButton,&QPushButton::clicked,[&]{
+        const QString path=QFileDialog::getOpenFileName(&window,"Import character layout",QDir::homePath(),"Daisywheel layouts (*.txt)");
+        if(path.isEmpty())return;
+        QFile file(path);
+        if(!file.open(QIODevice::ReadOnly)){setLayoutFileStatus("Could not read the selected layout file.");return;}
+        if(file.size()>64*1024){setLayoutFileStatus("Layout files must be 64 KB or smaller.");return;}
+        characterlayout::Layout layout;
+        QString error;
+        if(!characterlayout::parseText(file.readAll(),layout,error)){setLayoutFileStatus(error);return;}
+        QString id;
+        for(const QString &existingId:customLayoutIds){
+            if(settings.value("customLayouts/"+existingId+"/name").toString().compare(layout.name,Qt::CaseInsensitive)==0){id=existingId;break;}
+        }
+        if(id.isEmpty()){
+            if(customLayoutIds.size()>=8){setLayoutFileStatus("You can save up to 8 custom layouts. Remove one before importing another.");return;}
+            id=QUuid::createUuid().toString(QUuid::WithoutBraces);
+            customLayoutIds.append(id);
+            characterLayout->addItem("Custom: "+layout.name,"custom:"+id);
+        }
+        persistCustomLayout(id,layout);
+        view->pageLower=layout.lower;view->pageUpper=layout.upper;
+        const int customIndex=characterLayout->findData("custom:"+id);
+        characterLayout->setItemText(customIndex,"Custom: "+layout.name);
+        removeCustomLayoutButton->setVisible(true);
+        characterLayout->setCurrentIndex(customIndex);
+        view->page=0;view->update();
+        setLayoutFileStatus(QString("Imported '%1'. It is saved in Daisywheel settings.").arg(layout.name));
+    });
+    QObject::connect(removeCustomLayoutButton,&QPushButton::clicked,[&]{
+        const QString selected=characterLayout->currentData().toString();
+        if(!selected.startsWith("custom:")){
+            setLayoutFileStatus("Select a custom layout first.");return;
+        }
+        const QString id=selected.mid(7);
+        const int customIndex=characterLayout->currentIndex();
+        if(characterLayout->currentData().toString()==selected)
+            characterLayout->setCurrentIndex(characterLayout->findData("standard"));
+        characterLayout->removeItem(customIndex);
+        customLayoutIds.removeAll(id);
+        settings.remove("customLayouts/"+id);
+        settings.setValue("customLayouts/ids",customLayoutIds);
+        settings.setValue("characterLayout",characterLayout->currentData().toString());
+        settings.sync();
+        removeCustomLayoutButton->setVisible(!customLayoutIds.isEmpty());
+        setLayoutFileStatus("Custom layout removed from Daisywheel settings.");
+    });
+    QObject::connect(exportLayoutButton,&QPushButton::clicked,[&]{
+        const QString path=QFileDialog::getSaveFileName(&window,"Export character layout",QDir::homePath()+"/daisywheel-layout.txt","Daisywheel layouts (*.txt)");
+        if(path.isEmpty())return;
+        characterlayout::Layout layout;
+        const QString selected=characterLayout->currentData().toString();
+        if(selected.startsWith("custom:"))
+            layout.name=settings.value("customLayouts/"+selected.mid(7)+"/name","Custom").toString();
+        else layout.name="Custom Layout";
+        layout.lower=view->pageLower;layout.upper=view->pageUpper;
+        QSaveFile file(path);
+        const QByteArray contents=characterlayout::toText(layout);
+        if(!file.open(QIODevice::WriteOnly)||file.write(contents)!=contents.size()||!file.commit()){
+            setLayoutFileStatus("Could not write the layout file.");return;
+        }
+        setLayoutFileStatus("Layout exported as plain text.");
+    });
     view->setShortcutHint(QString("Hold %1 for Settings").arg(controllerButtonName(shortcutButton)));
     box->setStretch(box->indexOf(headerWidget),0);
     box->setStretch(box->indexOf(status),0);
@@ -504,6 +680,7 @@ int main(int argc,char **argv){
         window.setWindowTitle("Daisywheel settings");
     };
     showKeyboard=[&]{
+        setLayoutFileStatus({});
         settingsPanel->hide();
         window.setWindowTitle("Daisywheel — controller prototype");
         for(auto *control:fullModeWidgets)
@@ -619,9 +796,10 @@ int main(int argc,char **argv){
     };
     auto commit=[&](int slot){
         if(view->selected<0||!view->isVisible())return;
-        char ch=(view->symbol?wheel::symbols:wheel::letters)[view->selected][slot];
-        QString text(QChar::fromLatin1(ch));
-        if(view->upper&&!view->symbol)text=text.toUpper();
+        const QString text=view->page==1||!view->upper
+            ?view->pageLower[view->page][view->selected][slot]
+            :view->pageUpper[view->page][view->selected][slot];
+        if(text.isEmpty())return;
         soundEffects.buttonPressed();
         sendText(text);
     };
@@ -789,7 +967,11 @@ int main(int argc,char **argv){
                 case SDL_CONTROLLER_BUTTON_X:view->flashFaceButton(2);commit(2);break;
                 case SDL_CONTROLLER_BUTTON_Y:view->flashFaceButton(3);commit(3);break;
                 case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:if(!editingModifier){view->upper=!view->upper;soundEffects.buttonPressed();if(haptic)haptic(35);}break;
-                case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:if(!editingModifier){view->symbol=!view->symbol;soundEffects.buttonPressed();if(haptic)haptic(35);}break;
+                case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:if(!editingModifier){
+                    const bool extended=characterLayout->currentData().toString()!="standard";
+                    view->page=extended?(view->page+1)%3:(view->page==0?1:0);
+                    soundEffects.buttonPressed();if(haptic)haptic(35);
+                }break;
                 case SDL_CONTROLLER_BUTTON_LEFTSTICK:soundEffects.buttonPressed();sendText(" ");break;
                 case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
                     soundEffects.buttonPressed();
