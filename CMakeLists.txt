@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Daisywheel VERSION 0.5.2 LANGUAGES C CXX)
+project(Daisywheel VERSION 0.6.0 LANGUAGES C CXX)
 set(CMAKE_AUTOMOC ON)
 include(GNUInstallDirs)
 set(CMAKE_CXX_STANDARD 17)
