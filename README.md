@@ -53,7 +53,7 @@ For macOS, physical Mac testing is still needed. See the [installation guide](do
 | Controller input | Action |
 | --- | --- |
 | Left stick, face buttons | Choose petal, type character |
-| LB / RB | Shift case / switch letters and symbols |
+| LB / RB | Shift case / cycle character pages |
 | L3 / R3 | Space / Backspace; hold R3 to repeat |
 | Start | Enter |
 | Hold RT, move left stick | Move text cursor; hold LB to select or RB to navigate by words |
@@ -74,4 +74,4 @@ Daisywheel REAmade is licensed under [GPL-3.0-only](LICENSE). Contributions and 
 
 ## Documentation
 
-[Installation](docs/installation.md) · [Controls](docs/controls.md) · [Compatibility](docs/compatibility.md) · [Development](docs/development.md) · [Troubleshooting](docs/troubleshooting.md) · [Roadmap](docs/roadmap.md) · [Architecture](docs/architecture.md) · [Release packaging](docs/releases/packaging.md)
+[Installation](docs/installation.md) · [Controls](docs/controls.md) · [Character layout files](docs/layout-files.md) · [Compatibility](docs/compatibility.md) · [Development](docs/development.md) · [Troubleshooting](docs/troubleshooting.md) · [Roadmap](docs/roadmap.md) · [Architecture](docs/architecture.md) · [Release packaging](docs/releases/packaging.md)

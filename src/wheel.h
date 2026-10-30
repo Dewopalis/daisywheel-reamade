@@ -26,4 +26,18 @@ inline const std::array<std::string, 8> letters = {
 inline const std::array<std::string, 8> symbols = {
     "1234", "5678", "90+-", "*/=:", ";()_", "[]{}", "@#$%", "&<>\\"
 };
+// Each entry is a complete UTF-8 character string, never an indexed byte.
+// Extended Latin characters and common international punctuation/currency.
+inline const std::array<std::array<const char *, 4>, 8> extendedLower = {{
+    {{"â", "ê", "á", "à"}}, {{"è", "ë", "é", "ï"}},
+    {{"í", "ì", "î", "ó"}}, {{"ò", "€", "£", "¥"}},
+    {{"¢", "§", "¶", "°"}}, {{"…", "—", "–", "‘"}},
+    {{"’", "“", "”", "‹"}}, {{"›", "¿", "¡", "×"}}
+}};
+inline const std::array<std::array<const char *, 4>, 8> extendedUpper = {{
+    {{"Â", "Ê", "Á", "À"}}, {{"È", "Ë", "É", "Ï"}},
+    {{"Í", "Ì", "Î", "Ó"}}, {{"Ò", "€", "£", "¥"}},
+    {{"¢", "§", "¶", "°"}}, {{"…", "—", "–", "‘"}},
+    {{"’", "“", "”", "‹"}}, {{"›", "¿", "¡", "×"}}
+}};
 }
